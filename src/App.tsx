@@ -12,6 +12,7 @@ import { Placements } from "./components/Placements";
 import { Profile } from "./components/Profile";
 import { Login } from "./components/Login";
 import { SignUp } from "./components/SignUp";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -21,19 +22,21 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />}>
-            <Route index element={<Feed />} />
-            <Route path="daily" element={<Explore />} />
-            <Route path="match" element={<Match />} />
-            <Route path="placements" element={<Placements />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="login" element={<Login onSwitchToSignUp={() => {}} />} />
-            <Route path="signup" element={<SignUp onSwitchToLogin={() => {}} />} />
-          </Route>
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />}>
+              <Route index element={<Feed />} />
+              <Route path="daily" element={<Explore />} />
+              <Route path="match" element={<Match />} />
+              <Route path="placements" element={<Placements />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="login" element={<Login />} />
+              <Route path="signup" element={<SignUp />} />
+            </Route>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
