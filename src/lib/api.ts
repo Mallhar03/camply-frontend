@@ -1,12 +1,12 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   error?: {
     message: string;
-    details?: any[];
+    details?: unknown[];
   };
 }
 
@@ -14,14 +14,14 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
-    public details?: any[]
+    public details?: unknown[]
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   path: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
