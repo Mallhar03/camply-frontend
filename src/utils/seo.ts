@@ -29,7 +29,7 @@ export interface SEOData {
   ogImage?: string;
   twitterImage?: string;
   keywords?: string[];
-  structuredData?: Record<string, any>;
+  structuredData?: Record<string, unknown>;
 }
 
 // Route-specific SEO data

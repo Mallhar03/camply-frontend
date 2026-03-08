@@ -1,34 +1,81 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { register } from "@/services/auth";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
-export function SignUp() {
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+interface SignUpProps {
+  onSwitchToLogin?: () => void;
+}
+
+export function SignUp({ onSwitchToLogin }: SignUpProps) {
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { register } = useAuth();
+  const { setUser, setAccessToken } = useAuth();
   const navigate = useNavigate();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !username.trim() || !email.trim() || !password) return;
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsLoading(true);
+
     try {
-      await register(name.trim(), username.trim(), email.trim(), password);
-      toast({ title: "Account created! 🎉", description: "Welcome to Camply!" });
-      navigate("/");
-    } catch (err: any) {
+      const { name, username, email, password } = formData;
+      const data = await register({ name, username, email, password });
+
+      // Store token and user
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+
       toast({
-        title: "Sign up failed",
-        description: err?.message || "Something went wrong.",
+        title: "Success!",
+        description: "Account created successfully",
+      });
+
+      // Redirect to profile
+      navigate("/profile");
+    } catch (error) {
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -37,75 +84,109 @@ export function SignUp() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Create an Account</h1>
-          <p className="text-muted-foreground">
-            Enter your details below to create your account.
-          </p>
-        </div>
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Enter your name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="code_paglu"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="name@gmail.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Sign Up"}
-          </Button>
-        </form>
-        <div className="text-center mt-4">
-          <p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardDescription>Join Camply and connect with your campus community</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="John Doe"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                name="username"
+                placeholder="johndoe"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="john@college.edu"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+                minLength={6}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+                minLength={6}
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Sign Up"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-4 text-center text-sm">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary">
-              Login
-            </Link>
-          </p>
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={onSwitchToLogin || (() => navigate("/login"))}
+              className="text-primary hover:underline font-medium"
+              disabled={isLoading}
+            >
+              Log in
+            </button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

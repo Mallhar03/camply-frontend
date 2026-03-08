@@ -382,10 +382,10 @@ export function Placements() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={post.logo} 
-                      alt={`${post.company} logo`} 
-                      className="h-6 w-6 object-contain rounded-sm" // Use h-6 w-6 for a clean size
-                    />
+                      src={post.logo} 
+                      alt={`${post.company} logo`} 
+                      className="h-6 w-6 object-contain rounded-sm" // Use h-6 w-6 for a clean size
+                    />
                     <div>
                       <h3 className="font-semibold text-foreground">{post.company}</h3>
                       <p className="text-sm text-muted-foreground">{post.role}</p>
