@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await getMe();
       setUser(data.user);
-    } catch {
+    } catch (error) {
+      console.error('Failed to load user:', error);
       localStorage.removeItem('accessToken');
       _setAccessTokenState(null);
       setUser(null);
@@ -70,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await logoutService();
-    } catch {
-      // best-effort
+    } catch (error) {
+      console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('accessToken');
       _setAccessTokenState(null);
