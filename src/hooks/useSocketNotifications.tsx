@@ -33,7 +33,7 @@ export function useSocketNotifications() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[socket] connected, personal room auto-joined by backend');
+      // Backend auto-joins user room via JWT auth middleware
     });
 
     socket.on('match', ({ matchedUserId }: { matchedUserId: string }) => {
