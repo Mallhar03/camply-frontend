@@ -46,10 +46,37 @@ export function SignUp({ onSwitchToLogin }: SignUpProps) {
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.password.length < 8) {
       toast({
         title: "Error",
-        description: "Password must be at least 6 characters",
+        description: "Password must be at least 8 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!/[A-Z]/.test(formData.password)) {
+      toast({
+        title: "Error",
+        description: "Password must include at least one uppercase letter",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!/[0-9]/.test(formData.password)) {
+      toast({
+        title: "Error",
+        description: "Password must include at least one number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      toast({
+        title: "Error",
+        description: "Username can only contain letters, numbers, and underscores",
         variant: "destructive",
       });
       return;
