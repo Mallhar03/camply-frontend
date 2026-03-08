@@ -3,9 +3,11 @@ import { CreatePost } from "@/components/CreatePost";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Breadcrumbs from "@/components/ui/breadcrumb";
+import { useSocketNotifications } from "@/hooks/useSocketNotifications";
 
 const Index = () => {
   const [showCreatePost, setShowCreatePost] = useState(false);
+  useSocketNotifications(); // connects Socket.IO and listens for match/comment/vote/team-invite events
 
   const handleTabChange = (tab: string) => {
     if (tab === "post") {

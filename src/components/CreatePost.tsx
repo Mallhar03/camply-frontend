@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { X, Image, Link2, Hash } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createPost } from "@/api/feed";
 import { useToast } from "@/hooks/use-toast";
 
 interface Post {
@@ -21,7 +23,7 @@ interface Post {
 
 interface CreatePostProps {
   onClose: () => void;
-  onPostCreated?: (post: Post) => void;
+  onPostCreated?: () => void;
 }
 
 const postCategories = [
@@ -35,46 +37,36 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
   const [content, setContent] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [isPosting, setIsPosting] = useState(false);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const handlePost = async () => {
-    if (!content.trim() || !selectedCategory) return;
-    
-    setIsPosting(true);
-    
-    // Simulate posting delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newPost = {
-      id: Date.now().toString(),
-      username: isAnonymous ? "@anonymous_user" : "@current_user",
-      trustLevel: "bronze" as const,
-      timeAgo: "just now",
-      content: content.trim(),
-      upvotes: 0,
-      downvotes: 0,
-      comments: 0,
-      category: selectedCategory as "query" | "solution" | "job" | "discussion"
-    };
-    
-    // Save to local storage
-    const existingPosts = JSON.parse(localStorage.getItem("posts") || "[]");
-    localStorage.setItem("posts", JSON.stringify([newPost, ...existingPosts]));
+  const mutation = useMutation({
+    mutationFn: (newPost: { content: string; category: string }) => {
+      return createPost(newPost.content, newPost.category);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      toast({
+        title: "Post Created!",
+        description: "Your post has been shared with the community.",
+      });
+      setContent("");
+      setSelectedCategory("");
+      onPostCreated?.();
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error creating post",
+        description: error?.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    }
+  });
 
-    // Call callback if provided
-    onPostCreated?.(newPost);
-    
-    toast({
-      title: "Post Created!",
-      description: "Your post has been shared with the community.",
-    });
-    
-    // Reset form and close
-    setContent("");
-    setSelectedCategory("");
-    setIsPosting(false);
-    onClose();
+  const handlePost = () => {
+    if (!content.trim() || !selectedCategory) return;
+    mutation.mutate({ content: content.trim(), category: selectedCategory });
   };
 
   return (
@@ -165,9 +157,9 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
               variant="hero" 
               className="flex-1"
               onClick={handlePost}
-              disabled={!content.trim() || !selectedCategory || isPosting}
+              disabled={!content.trim() || !selectedCategory || mutation.isPending}
             >
-              {isPosting ? "Posting..." : "Post"}
+              {mutation.isPending ? "Posting..." : "Post"}
             </Button>
           </div>
         </div>

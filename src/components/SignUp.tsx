@@ -1,32 +1,39 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export function SignUp() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { register } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !username || !email || !password) {
+    if (!name.trim() || !username.trim() || !email.trim() || !password) return;
+
+    setIsLoading(true);
+    try {
+      await register(name.trim(), username.trim(), email.trim(), password);
+      toast({ title: "Account created! 🎉", description: "Welcome to Camply!" });
+      navigate("/");
+    } catch (err: any) {
       toast({
-        title: "Error",
-        description: "Please fill in all fields.",
+        title: "Sign up failed",
+        description: err?.message || "Something went wrong.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-    // TODO: Add actual sign-up logic here
-    toast({
-      title: "Success",
-      description: "You have successfully signed up!",
-    });
   };
 
   return (
@@ -44,10 +51,11 @@ export function SignUp() {
             <Input
               id="name"
               type="text"
-              placeholder="Enter Your Cute & Sweet Name Here"
+              placeholder="Enter your name"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -59,6 +67,7 @@ export function SignUp() {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -70,6 +79,7 @@ export function SignUp() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -80,10 +90,11 @@ export function SignUp() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Sign Up
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Creating account..." : "Sign Up"}
           </Button>
         </form>
         <div className="text-center mt-4">
