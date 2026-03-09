@@ -233,21 +233,6 @@ export function PostCard({
               <MessageCircle className="h-4 w-4" />
               {currentComments} comments
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                navigator.clipboard.writeText(content);
-                toast({
-                  title: "Shared!",
-                  description: "Post content copied to clipboard",
-                });
-              }}
-            >
-              <Share className="h-4 w-4" />
-              Share
-            </Button>
           </div>
         </div>
       </div>
