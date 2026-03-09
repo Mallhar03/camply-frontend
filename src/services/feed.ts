@@ -88,3 +88,22 @@ export async function votePost(postId: string, value: 1 | -1) {
 export async function deletePost(postId: string): Promise<void> {
   await apiFetch(`/api/v1/posts/${postId}`, { method: 'DELETE' });
 }
+
+export interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    username: string;
+    avatar: string | null;
+    trustLevel: string;
+  };
+}
+
+export async function getPostById(postId: string): Promise<Post & { comments: Comment[] }> {
+  const response = await apiFetch<{ post: Post & { comments: Comment[] } }>(
+    `/api/v1/posts/${postId}`
+  );
+  return response.data!.post;
+}
