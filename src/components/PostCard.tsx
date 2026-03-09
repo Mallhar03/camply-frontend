@@ -190,11 +190,20 @@ export function PostCard({
                   <DropdownMenuItem
                     className="cursor-pointer"
                     onClick={() => {
-                      navigator.clipboard.writeText(window.location.origin);
-                      toast({
-                        title: "Link Copied!",
-                        description: "Link to Camply has been copied to clipboard.",
-                      });
+                      const postUrl = `${window.location.origin}/posts/${id}`;
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `Post by @${username} on Camply`,
+                          text: content.slice(0, 100) + (content.length > 100 ? "..." : ""),
+                          url: postUrl,
+                        }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(postUrl);
+                        toast({
+                          title: "Link Copied! 🔗",
+                          description: "Post link copied to clipboard.",
+                        });
+                      }
                     }}
                   >
                     <Share className="h-4 w-4 mr-2" />
