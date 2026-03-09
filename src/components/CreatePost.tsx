@@ -3,10 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { X, Image, Link2, Hash } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { createPost } from "@/services/feed";
 
 interface CreatePostProps {
@@ -26,28 +27,39 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
+  const isPostingRef = useRef(false); // ← prevents double-submit race condition
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const handlePost = async () => {
+    // ✅ Auth guard — redirect to login if not authenticated
+    if (!isAuthenticated) {
+      onClose();
+      navigate("/login");
+      return;
+    }
+
     if (!content.trim() || !selectedCategory) return;
-    
+
+    // ✅ Prevent double-submit using ref (state update is async, ref is sync)
+    if (isPostingRef.current) return;
+    isPostingRef.current = true;
     setIsPosting(true);
-    
+
     try {
       const newPost = await createPost({
         content: content.trim(),
-        category: selectedCategory.toUpperCase(), // Map to backend enum
+        category: selectedCategory.toUpperCase(),
       });
 
-      // Call callback if provided
       onPostCreated?.(newPost);
-      
+
       toast({
         title: "Post Created!",
         description: "Your post has been shared with the community.",
       });
-      
-      // Reset form and close
+
       setContent("");
       setSelectedCategory("");
       onClose();
@@ -58,6 +70,7 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
         variant: "destructive",
       });
     } finally {
+      isPostingRef.current = false;
       setIsPosting(false);
     }
   };
@@ -146,8 +159,8 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
             <Button variant="outline" className="flex-1" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              variant="hero" 
+            <Button
+              variant="hero"
               className="flex-1"
               onClick={handlePost}
               disabled={!content.trim() || !selectedCategory || isPosting}
