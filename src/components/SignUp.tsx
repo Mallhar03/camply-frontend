@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { register } from "@/services/auth";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 
 interface SignUpProps {
   onSwitchToLogin?: () => void;
@@ -21,7 +21,17 @@ export function SignUp({ onSwitchToLogin }: SignUpProps) {
     password: "",
     confirmPassword: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const passwordRequirements = [
+    { regex: /.{8,}/, text: "At least 8 characters" },
+    { regex: /[A-Z]/, text: "At least 1 uppercase letter" },
+    { regex: /[a-z]/, text: "At least 1 lowercase letter" },
+    { regex: /[0-9]/, text: "At least 1 number" },
+    { regex: /[^A-Za-z0-9]/, text: "At least 1 special character" },
+  ];
   const { toast } = useToast();
   const { setUser, setAccessToken } = useAuth();
   const navigate = useNavigate();
@@ -46,10 +56,11 @@ export function SignUp({ onSwitchToLogin }: SignUpProps) {
       return;
     }
 
-    if (formData.password.length < 6) {
+    const hasAllRequirements = passwordRequirements.every((req) => req.regex.test(formData.password));
+    if (!hasAllRequirements) {
       toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
+        title: "Weak Password",
+        description: "Please fulfill all password requirements.",
         variant: "destructive",
       });
       return;
@@ -134,32 +145,81 @@ export function SignUp({ onSwitchToLogin }: SignUpProps) {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-                minLength={6}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Password Requirements */}
+              {formData.password && (
+                <div className="mt-2 space-y-1">
+                  {passwordRequirements.map((req, index) => {
+                    const isMet = req.regex.test(formData.password);
+                    return (
+                      <div key={index} className="flex items-center text-xs transition-colors duration-200">
+                        {isMet ? (
+                          <Check className="mr-2 h-3 w-3 text-green-500" />
+                        ) : (
+                          <X className="mr-2 h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={isMet ? "text-green-500" : "text-muted-foreground"}>
+                          {req.text}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-                minLength={6}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
