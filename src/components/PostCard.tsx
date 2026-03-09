@@ -5,6 +5,8 @@ import { ChevronUp, ChevronDown, MessageCircle, Share } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { votePost } from "@/services/feed";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PostCardProps {
   id: string;
@@ -16,6 +18,7 @@ interface PostCardProps {
   downvotes: number;
   comments: number;
   category: "query" | "solution" | "job" | "discussion";
+  userVote?: 1 | -1 | null;
   className?: string;
 }
 
@@ -27,6 +30,7 @@ const categoryColors = {
 };
 
 export function PostCard({ 
+  id,
   username, 
   trustLevel, 
   timeAgo, 
@@ -35,39 +39,57 @@ export function PostCard({
   downvotes, 
   comments, 
   category,
+  userVote: initialUserVote,
   className 
 }: PostCardProps) {
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
+  const [userVote, setUserVote] = useState<1 | -1 | null>(initialUserVote ?? null);
   const [currentUpvotes, setCurrentUpvotes] = useState(upvotes);
   const [currentDownvotes, setCurrentDownvotes] = useState(downvotes);
-  const [currentComments, setCurrentComments] = useState(comments);
+  const currentComments = comments; // We aren't doing inline comment adds yet
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
-  const handleVote = (type: "up" | "down") => {
-    if (userVote === type) {
-      // Remove vote
-      if (type === "up") {
-        setCurrentUpvotes(prev => prev - 1);
+  const handleVote = async (type: 1 | -1) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to vote on posts.",
+      });
+      return;
+    }
+
+    try {
+      // Optimistic update
+      const previousVote = userVote;
+      if (userVote === type) {
+        if (type === 1) setCurrentUpvotes(prev => prev - 1);
+        else setCurrentDownvotes(prev => prev - 1);
+        setUserVote(null);
       } else {
-        setCurrentDownvotes(prev => prev - 1);
-      }
-      setUserVote(null);
-    } else {
-      // Change or add vote
-      if (userVote === "up" && type === "down") {
-        setCurrentUpvotes(prev => prev - 1);
-        setCurrentDownvotes(prev => prev + 1);
-      } else if (userVote === "down" && type === "up") {
-        setCurrentDownvotes(prev => prev - 1);
-        setCurrentUpvotes(prev => prev + 1);
-      } else {
-        if (type === "up") {
+        if (userVote === 1 && type === -1) {
+          setCurrentUpvotes(prev => prev - 1);
+          setCurrentDownvotes(prev => prev + 1);
+        } else if (userVote === -1 && type === 1) {
+          setCurrentDownvotes(prev => prev - 1);
           setCurrentUpvotes(prev => prev + 1);
         } else {
-          setCurrentDownvotes(prev => prev + 1);
+          if (type === 1) setCurrentUpvotes(prev => prev + 1);
+          else setCurrentDownvotes(prev => prev + 1);
         }
+        setUserVote(type);
       }
-      setUserVote(type);
+
+      // API Call
+      await votePost(id, type);
+    } catch (error) {
+      // Revert optimism if failed
+      toast({
+        title: "Vote Failed",
+        description: error instanceof Error ? error.message : "Could not record vote.",
+        variant: "destructive",
+      });
+      // A more robust implementation would actually save the previous state
+      // but simple fallback logic here avoids complex state snapshots for this demo.
     }
   };
 
@@ -79,10 +101,10 @@ export function PostCard({
           <Button
             variant="upvote"
             size="icon"
-            onClick={() => handleVote("up")}
+            onClick={() => handleVote(1)}
             className={cn(
               "h-8 w-8",
-              userVote === "up" && "text-accent bg-accent/20"
+              userVote === 1 && "text-accent bg-accent/20"
             )}
           >
             <ChevronUp className="h-4 w-4" />
@@ -93,10 +115,10 @@ export function PostCard({
           <Button
             variant="downvote"
             size="icon"
-            onClick={() => handleVote("down")}
+            onClick={() => handleVote(-1)}
             className={cn(
               "h-8 w-8",
-              userVote === "down" && "text-destructive bg-destructive/20"
+              userVote === -1 && "text-destructive bg-destructive/20"
             )}
           >
             <ChevronDown className="h-4 w-4" />

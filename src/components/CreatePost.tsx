@@ -7,21 +7,11 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-interface Post {
-  id: string;
-  username: string;
-  trustLevel: "bronze" | "silver" | "gold" | "platinum";
-  timeAgo: string;
-  content: string;
-  upvotes: number;
-  downvotes: number;
-  comments: number;
-  category: "query" | "solution" | "job" | "discussion";
-}
+import { createPost } from "@/services/feed";
 
 interface CreatePostProps {
   onClose: () => void;
-  onPostCreated?: (post: Post) => void;
+  onPostCreated?: (post: unknown) => void;
 }
 
 const postCategories = [
@@ -43,38 +33,33 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
     
     setIsPosting(true);
     
-    // Simulate posting delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newPost = {
-      id: Date.now().toString(),
-      username: isAnonymous ? "@anonymous_user" : "@current_user",
-      trustLevel: "bronze" as const,
-      timeAgo: "just now",
-      content: content.trim(),
-      upvotes: 0,
-      downvotes: 0,
-      comments: 0,
-      category: selectedCategory as "query" | "solution" | "job" | "discussion"
-    };
-    
-    // Save to local storage
-    const existingPosts = JSON.parse(localStorage.getItem("posts") || "[]");
-    localStorage.setItem("posts", JSON.stringify([newPost, ...existingPosts]));
+    try {
+      const newPost = await createPost({
+        content: content.trim(),
+        category: selectedCategory.toUpperCase(), // Map to backend enum
+      });
 
-    // Call callback if provided
-    onPostCreated?.(newPost);
-    
-    toast({
-      title: "Post Created!",
-      description: "Your post has been shared with the community.",
-    });
-    
-    // Reset form and close
-    setContent("");
-    setSelectedCategory("");
-    setIsPosting(false);
-    onClose();
+      // Call callback if provided
+      onPostCreated?.(newPost);
+      
+      toast({
+        title: "Post Created!",
+        description: "Your post has been shared with the community.",
+      });
+      
+      // Reset form and close
+      setContent("");
+      setSelectedCategory("");
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Failed to create post",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   return (
