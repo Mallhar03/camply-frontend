@@ -180,14 +180,27 @@ export function PostCard({
               <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
                 {category}
               </span>
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.origin);
+                      toast({
+                        title: "Link Copied!",
+                        description: "Link to Camply has been copied to clipboard.",
+                      });
+                    }}
+                  >
+                    <Share className="h-4 w-4 mr-2" />
+                    Share Post
+                  </DropdownMenuItem>
+                  {isOwner && (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive cursor-pointer"
                       onClick={() => setShowDeleteDialog(true)}
@@ -195,9 +208,9 @@ export function PostCard({
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete Post
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
