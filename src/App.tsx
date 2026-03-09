@@ -13,6 +13,7 @@ import { Profile } from "./components/Profile";
 import { Login } from "./components/Login";
 import { SignUp } from "./components/SignUp";
 import { AuthProvider } from "./contexts/AuthContext";
+import PostPage from "./pages/PostPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="login" element={<Login />} />
               <Route path="signup" element={<SignUp />} />
             </Route>
+            <Route path="/posts/:id" element={<PostPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
