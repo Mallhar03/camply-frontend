@@ -84,3 +84,7 @@ export async function votePost(postId: string, value: 1 | -1) {
   });
   return response.data!;
 }
+
+export async function deletePost(postId: string): Promise<void> {
+  await apiFetch(`/api/v1/posts/${postId}`, { method: 'DELETE' });
+}

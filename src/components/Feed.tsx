@@ -7,7 +7,7 @@ import { CreatePost } from "./CreatePost";
 import { Input } from "@/components/ui/input";
 import { SEO } from "@/components/SEO";
 import { generateWebSiteSchema } from "@/utils/seo";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFeed } from "@/services/feed";
 import { formatDistanceToNow } from "date-fns";
 
@@ -16,6 +16,7 @@ export function Feed() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["feed", activeFilter],
@@ -32,6 +33,10 @@ export function Feed() {
 
   const handlePostCreated = () => {
     refetch();
+  };
+
+  const handlePostDeleted = (postId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["feed"] });
   };
 
   const posts = data?.posts || [];
@@ -151,6 +156,7 @@ export function Feed() {
               comments={post._count.comments}
               category={post.category.toLowerCase() as "query" | "solution" | "job" | "discussion"}
               userVote={post.userVote}
+              onDelete={handlePostDeleted}
             />
           ))}
         </div>

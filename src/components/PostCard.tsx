@@ -1,12 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrustBadge } from "@/components/TrustBadge";
-import { ChevronUp, ChevronDown, MessageCircle, Share } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageCircle, Share, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { votePost } from "@/services/feed";
+import { votePost, deletePost } from "@/services/feed";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PostCardProps {
   id: string;
@@ -20,6 +36,7 @@ interface PostCardProps {
   category: "query" | "solution" | "job" | "discussion";
   userVote?: 1 | -1 | null;
   className?: string;
+  onDelete?: (postId: string) => void;
 }
 
 const categoryColors = {
@@ -40,14 +57,18 @@ export function PostCard({
   comments, 
   category,
   userVote: initialUserVote,
-  className 
+  className,
+  onDelete
 }: PostCardProps) {
   const [userVote, setUserVote] = useState<1 | -1 | null>(initialUserVote ?? null);
   const [currentUpvotes, setCurrentUpvotes] = useState(upvotes);
   const [currentDownvotes, setCurrentDownvotes] = useState(downvotes);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const currentComments = comments; // We aren't doing inline comment adds yet
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isOwner = user?.username === username;
 
   const handleVote = async (type: 1 | -1) => {
     if (!isAuthenticated) {
@@ -93,6 +114,24 @@ export function PostCard({
     }
   };
 
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      await deletePost(id);
+      toast({ title: "Post deleted", description: "Your post has been removed." });
+      onDelete?.(id);
+    } catch (error) {
+      toast({
+        title: "Failed to delete",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  }
+
   return (
     <Card className={cn("p-6 hover:shadow-medium transition-all duration-300 animate-fade-in", className)}>
       <div className="flex flex-col sm:flex-row gap-4">
@@ -128,7 +167,7 @@ export function PostCard({
         {/* Content Section */}
         <div className="flex-1 space-y-3">
           {/* Header */}
-          <div className="flex flex-wrap items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between group">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">{username}</span>
@@ -137,9 +176,29 @@ export function PostCard({
               <span className="text-sm text-muted-foreground">•</span>
               <span className="text-sm text-muted-foreground">{timeAgo}</span>
             </div>
-            <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
-              {category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
+                {category}
+              </span>
+              {isOwner && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive cursor-pointer"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Post
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
 
           {/* Content */}
@@ -179,6 +238,27 @@ export function PostCard({
           </div>
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Your post will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
