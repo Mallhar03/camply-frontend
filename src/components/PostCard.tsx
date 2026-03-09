@@ -81,38 +81,49 @@ export function PostCard({
       return;
     }
 
-    try {
-      // Optimistic update
-      const previousVote = userVote;
-      if (userVote === type) {
-        if (type === 1) setCurrentUpvotes(prev => prev - 1);
-        else setCurrentDownvotes(prev => prev - 1);
-        setUserVote(null);
-      } else {
-        if (userVote === 1 && type === -1) {
-          setCurrentUpvotes(prev => prev - 1);
-          setCurrentDownvotes(prev => prev + 1);
-        } else if (userVote === -1 && type === 1) {
-          setCurrentDownvotes(prev => prev - 1);
-          setCurrentUpvotes(prev => prev + 1);
-        } else {
-          if (type === 1) setCurrentUpvotes(prev => prev + 1);
-          else setCurrentDownvotes(prev => prev + 1);
-        }
-        setUserVote(type);
-      }
+    // Save previous state for rollback
+    const prevVote = userVote;
+    const prevUpvotes = currentUpvotes;
+    const prevDownvotes = currentDownvotes;
 
-      // API Call
-      await votePost(id, type);
+    // Optimistic update
+    if (userVote === type) {
+      // Toggle off
+      if (type === 1) setCurrentUpvotes(prev => prev - 1);
+      else setCurrentDownvotes(prev => prev - 1);
+      setUserVote(null);
+    } else {
+      // Switch or new vote
+      if (userVote === 1 && type === -1) {
+        setCurrentUpvotes(prev => prev - 1);
+        setCurrentDownvotes(prev => prev + 1);
+      } else if (userVote === -1 && type === 1) {
+        setCurrentDownvotes(prev => prev - 1);
+        setCurrentUpvotes(prev => prev + 1);
+      } else {
+        if (type === 1) setCurrentUpvotes(prev => prev + 1);
+        else setCurrentDownvotes(prev => prev + 1);
+      }
+      setUserVote(type);
+    }
+
+    try {
+      // API call — now returns real counts from backend
+      const result = await votePost(id, type);
+      // Sync with real server counts
+      if (result.upvotes !== undefined) setCurrentUpvotes(result.upvotes);
+      if (result.downvotes !== undefined) setCurrentDownvotes(result.downvotes);
+      if (result.userVote !== undefined) setUserVote(result.userVote);
     } catch (error) {
-      // Revert optimism if failed
+      // Revert to previous state on failure
+      setCurrentUpvotes(prevUpvotes);
+      setCurrentDownvotes(prevDownvotes);
+      setUserVote(prevVote);
       toast({
         title: "Vote Failed",
         description: error instanceof Error ? error.message : "Could not record vote.",
         variant: "destructive",
       });
-      // A more robust implementation would actually save the previous state
-      // but simple fallback logic here avoids complex state snapshots for this demo.
     }
   };
 

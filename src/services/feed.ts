@@ -78,7 +78,11 @@ export async function createPost(data: {
 
 // Upvote or downvote a post
 export async function votePost(postId: string, value: 1 | -1) {
-  const response = await apiFetch<{ voted: boolean; value?: number }>(`/api/v1/posts/${postId}/vote`, {
+  const response = await apiFetch<{
+    upvotes: number;
+    downvotes: number;
+    userVote: 1 | -1 | null;
+  }>(`/api/v1/posts/${postId}/vote`, {
     method: 'POST',
     body: JSON.stringify({ value }),
   });
