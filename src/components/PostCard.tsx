@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { votePost, deletePost } from "@/services/feed";
 import { useAuth } from "@/contexts/AuthContext";
+import { CommentSection } from "@/components/CommentSection";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +66,8 @@ export function PostCard({
   const [currentDownvotes, setCurrentDownvotes] = useState(downvotes);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const currentComments = comments; // We aren't doing inline comment adds yet
+  const [showComments, setShowComments] = useState(false);
+  const [currentComments, setCurrentComments] = useState(comments);
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const isOwner = user?.username === username;
@@ -232,19 +234,22 @@ export function PostCard({
               variant="ghost" 
               size="sm" 
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                toast({
-                  title: "Comments",
-                  description: "Opening comments section...",
-                });
-              }}
+              onClick={() => setShowComments(prev => !prev)}
             >
               <MessageCircle className="h-4 w-4" />
-              {currentComments} comments
+              {currentComments} {showComments ? "▲ hide" : "▼ comments"}
             </Button>
           </div>
         </div>
       </div>
+
+      {showComments && (
+        <CommentSection
+          postId={id}
+          postAuthorUsername={username}
+          onCommentCountChange={setCurrentComments}
+        />
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

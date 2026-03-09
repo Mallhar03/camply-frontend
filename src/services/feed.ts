@@ -107,3 +107,24 @@ export async function getPostById(postId: string): Promise<Post & { comments: Co
   );
   return response.data!.post;
 }
+
+export async function getPostComments(postId: string): Promise<Comment[]> {
+  const response = await apiFetch<{ post: { comments: Comment[] } }>(
+    `/api/v1/posts/${postId}`
+  );
+  return response.data!.post.comments;
+}
+
+export async function addComment(postId: string, content: string): Promise<Comment> {
+  const response = await apiFetch<{ comment: Comment }>(
+    `/api/v1/posts/${postId}/comments`,
+    { method: 'POST', body: JSON.stringify({ content }) }
+  );
+  return response.data!.comment;
+}
+
+export async function deleteComment(postId: string, commentId: string): Promise<void> {
+  await apiFetch(`/api/v1/posts/${postId}/comments/${commentId}`, {
+    method: 'DELETE',
+  });
+}
