@@ -31,7 +31,25 @@ export function Feed() {
     });
   };
 
-  const handlePostCreated = () => {
+  const handlePostCreated = (newPost: any) => {
+    // Optimistic Update: Add new post to the top immediately
+    queryClient.setQueryData(["feed", activeFilter], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        posts: [
+          {
+            ...newPost,
+            upvotes: 0,
+            downvotes: 0,
+            userVote: null,
+          },
+          ...oldData.posts,
+        ],
+      };
+    });
+
+    // Invalidate everything in background
     queryClient.invalidateQueries({ queryKey: ["feed"] });
   };
 
