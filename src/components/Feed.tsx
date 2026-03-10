@@ -18,7 +18,7 @@ export function Feed() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["feed", activeFilter],
     queryFn: () => getFeed({ category: activeFilter }),
   });
@@ -32,7 +32,7 @@ export function Feed() {
   };
 
   const handlePostCreated = () => {
-    refetch();
+    queryClient.invalidateQueries({ queryKey: ["feed"] });
   };
 
   const handlePostDeleted = (postId: string) => {
