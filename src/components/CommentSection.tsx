@@ -36,7 +36,6 @@ export function CommentSection({ postId, postAuthorUsername, onCommentCountChang
       await addComment(postId, commentText.trim());
       setCommentText("");
       await queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      await queryClient.invalidateQueries({ queryKey: ["feed"] });
       onCommentCountChange(comments.length + 1);
       toast({ title: "Comment added!" });
     } catch (error) {
@@ -55,7 +54,6 @@ export function CommentSection({ postId, postAuthorUsername, onCommentCountChang
     try {
       await deleteComment(postId, commentId);
       await queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      await queryClient.invalidateQueries({ queryKey: ["feed"] });
       onCommentCountChange(comments.length - 1);
       toast({ title: "Comment deleted" });
     } catch (error) {
