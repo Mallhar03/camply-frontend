@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
-import { Filter, Plus, Search as SearchIcon, Loader2 } from "lucide-react";
+import { Filter, Plus, Search as SearchIcon, Loader2, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CreatePost } from "./CreatePost";
 import { Input } from "@/components/ui/input";
 import { SEO } from "@/components/SEO";
 import { generateWebSiteSchema } from "@/utils/seo";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getFeed } from "@/services/feed";
 import { formatTimeAgo } from "@/lib/utils";
 
@@ -18,50 +18,79 @@ export function Feed() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["feed", activeFilter],
-    queryFn: () => getFeed({ category: activeFilter }),
+    queryFn: ({ pageParam = 1 }) =>
+      getFeed({ category: activeFilter, page: pageParam, limit: 20 }),
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasMore
+        ? lastPage.pagination.page + 1
+        : undefined,
+    initialPageParam: 1,
   });
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter(filter);
-    toast({
-      title: "Filter Applied",
-      description: `Showing ${filter === "all" ? "all posts" : filter} posts`,
-    });
   };
 
   const handlePostCreated = (newPost: any) => {
-    // Optimistic Update: Add new post to the top immediately
+    // Optimistically add to top of feed
+    queryClient.setQueryData(["feed", activeFilter], (oldData: any) => {
+      if (!oldData) return oldData;
+      const firstPage = oldData.pages[0];
+      return {
+        ...oldData,
+        pages: [
+          {
+            ...firstPage,
+            posts: [
+              {
+                ...newPost,
+                upvotes: 0,
+                downvotes: 0,
+                userVote: null,
+              },
+              ...firstPage.posts,
+            ],
+          },
+          ...oldData.pages.slice(1),
+        ],
+      };
+    });
+    // Refetch in background to get real server state
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ["feed", activeFilter] });
+    }, 2000);
+  };
+
+  const handlePostDeleted = (postId: string) => {
+    // Remove post from cache immediately without full refetch
     queryClient.setQueryData(["feed", activeFilter], (oldData: any) => {
       if (!oldData) return oldData;
       return {
         ...oldData,
-        posts: [
-          {
-            ...newPost,
-            upvotes: 0,
-            downvotes: 0,
-            userVote: null,
-          },
-          ...oldData.posts,
-        ],
+        pages: oldData.pages.map((page: any) => ({
+          ...page,
+          posts: page.posts.filter((p: any) => p.id !== postId),
+        })),
       };
     });
-
-    // Invalidate everything in background
-    queryClient.invalidateQueries({ queryKey: ["feed"] });
   };
 
-  const handlePostDeleted = (postId: string) => {
-    queryClient.invalidateQueries({ queryKey: ["feed"] });
-  };
+  // Flatten all pages into single posts array
+  const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  const posts = data?.posts || [];
-
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          post.author.username.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch =
+      post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.author.username.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -73,17 +102,9 @@ export function Feed() {
         <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur p-4 border-b md:border-none z-10">
           <h1 className="text-xl font-bold text-foreground md:hidden">Camply</h1>
           <div className="flex items-center gap-2 ml-auto">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="md:hidden"
-              onClick={() => toast({ title: "Filter", description: "Filter options opened!" })}
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="md:hidden"
               onClick={() => setShowCreatePost(true)}
             >
@@ -100,48 +121,24 @@ export function Feed() {
               placeholder="Search posts, users, topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-12"
+              className="pl-10"
             />
           </div>
         </div>
 
-        {/* Filter Tabs - Desktop */}
-        <div className="hidden md:flex items-center gap-2 px-4">
-          <Button 
-            variant={activeFilter === "all" ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterClick("all")}
-          >
-            All
-          </Button>
-          <Button 
-            variant={activeFilter === "queries" ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterClick("queries")}
-          >
-            Queries
-          </Button>
-          <Button 
-            variant={activeFilter === "solutions" ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterClick("solutions")}
-          >
-            Solutions
-          </Button>
-          <Button 
-            variant={activeFilter === "jobs" ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterClick("jobs")}
-          >
-            Jobs
-          </Button>
-          <Button 
-            variant={activeFilter === "discussions" ? "default" : "outline"} 
-            size="sm"
-            onClick={() => handleFilterClick("discussions")}
-          >
-            Discussions
-          </Button>
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2 px-4 overflow-x-auto pb-1">
+          {["all", "queries", "solutions", "jobs", "discussions"].map((filter) => (
+            <Button
+              key={filter}
+              variant={activeFilter === filter ? "default" : "outline"}
+              size="sm"
+              className="whitespace-nowrap"
+              onClick={() => handleFilterClick(filter)}
+            >
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </Button>
+          ))}
         </div>
 
         {/* Posts */}
@@ -162,8 +159,8 @@ export function Feed() {
             </div>
           )}
           {filteredPosts.map((post) => (
-            <PostCard 
-              key={post.id} 
+            <PostCard
+              key={post.id}
               id={post.id}
               username={post.author.username}
               trustLevel={post.author.trustLevel.toLowerCase() as "bronze" | "silver" | "gold" | "platinum"}
@@ -177,6 +174,32 @@ export function Feed() {
               onDelete={handlePostDeleted}
             />
           ))}
+
+          {/* Load More Button */}
+          {hasNextPage && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full max-w-xs"
+              >
+                {isFetchingNextPage ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                )}
+                {isFetchingNextPage ? "Loading..." : "Load More Posts"}
+              </Button>
+            </div>
+          )}
+
+          {/* All posts loaded */}
+          {!hasNextPage && posts.length > 0 && !searchQuery && (
+            <p className="text-center text-sm text-muted-foreground py-4">
+              You've seen all posts ✓
+            </p>
+          )}
         </div>
 
         {showCreatePost && (
