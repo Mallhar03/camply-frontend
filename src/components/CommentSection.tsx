@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrustBadge } from "@/components/TrustBadge";
 import { Trash2, Loader2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatTimeAgo } from "@/lib/utils";
 
 interface CommentSectionProps {
   postId: string;
@@ -104,7 +104,7 @@ export function CommentSection({ postId, postAuthorUsername, onCommentCountChang
                   level={comment.author.trustLevel.toLowerCase() as "bronze" | "silver" | "gold" | "platinum"}
                 />
                 <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                  {formatTimeAgo(new Date(comment.createdAt))}
                 </span>
               </div>
               {canDelete(comment) && (

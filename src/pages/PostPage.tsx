@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getPostById } from "@/services/feed";
-import { formatDistanceToNow } from "date-fns";
+import { formatTimeAgo } from "@/lib/utils";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -88,7 +88,7 @@ export default function PostPage() {
                     />
                     <span className="text-sm text-muted-foreground">•</span>
                     <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                      {formatTimeAgo(new Date(post.createdAt))}
                     </span>
                   </div>
                   <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[post.category])}>
@@ -134,7 +134,7 @@ export default function PostPage() {
                           level={comment.author.trustLevel.toLowerCase() as "bronze" | "silver" | "gold" | "platinum"}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                          {formatTimeAgo(new Date(comment.createdAt))}
                         </span>
                       </div>
                       <p className="text-sm text-foreground">{comment.content}</p>

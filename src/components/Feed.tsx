@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { generateWebSiteSchema } from "@/utils/seo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFeed } from "@/services/feed";
-import { formatDistanceToNow } from "date-fns";
+import { formatTimeAgo } from "@/lib/utils";
 
 export function Feed() {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -149,7 +149,7 @@ export function Feed() {
               id={post.id}
               username={post.author.username}
               trustLevel={post.author.trustLevel.toLowerCase() as "bronze" | "silver" | "gold" | "platinum"}
-              timeAgo={formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+              timeAgo={formatTimeAgo(new Date(post.createdAt))}
               content={post.content}
               upvotes={post.upvotes}
               downvotes={post.downvotes}
