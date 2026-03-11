@@ -64,7 +64,7 @@ export function Feed() {
         ],
       };
     });
-    // Refetch in background to get real server state
+    // Refetch in background to get real server state                  
     setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ["feed", activeFilter] });
     }, 1500);
