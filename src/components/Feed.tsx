@@ -65,7 +65,7 @@ export function Feed() {
       };
     });
     // Refetch in background to get real server state
-    queryClient.invalidateQueries({ queryKey: ["feed", activeFilter] });
+    // queryClient.invalidateQueries({ queryKey: ["feed", activeFilter] });
   };
 
   const handlePostDeleted = (postId: string) => {
