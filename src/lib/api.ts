@@ -23,7 +23,8 @@ export class ApiError extends Error {
 
 export async function apiFetch<T = unknown>(
   path: string,
-  options?: RequestInit
+  options?: RequestInit,
+  _isRetry = false
 ): Promise<ApiResponse<T>> {
   const token = localStorage.getItem('accessToken');
 
@@ -41,6 +42,43 @@ export async function apiFetch<T = unknown>(
     const body = await res.json();
 
     if (!res.ok) {
+      if (res.status === 401 && !_isRetry) {
+        try {
+          const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          });
+          
+          if (!refreshRes.ok) {
+            throw new Error('Refresh failed');
+          }
+          
+          const refreshBody = await refreshRes.json();
+          if (refreshBody.data?.accessToken) {
+            localStorage.setItem('accessToken', refreshBody.data.accessToken);
+            return await apiFetch<T>(path, options, true);
+          } else {
+            throw new Error('No access token in refresh response');
+          }
+        } catch (refreshErr) {
+          localStorage.removeItem('accessToken');
+          window.dispatchEvent(new Event("auth:logout"));
+          throw new ApiError(
+            body?.error?.message || 'Request failed',
+            res.status,
+            body?.error?.details
+          );
+        }
+      }
+
+      if (res.status === 401 && _isRetry) {
+        localStorage.removeItem('accessToken');
+        window.dispatchEvent(new Event("auth:logout"));
+      }
+
       throw new ApiError(
         body?.error?.message || 'Request failed',
         res.status,

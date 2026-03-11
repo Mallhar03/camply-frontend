@@ -6,7 +6,7 @@ import {
   ReactNode,
   useCallback,
 } from 'react';
-import { User, getMe, logout as logoutService } from '@/services/auth';
+import { User, getMe, logout as logoutService, refreshToken } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
@@ -36,14 +36,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loadUser = async () => {
+  const loadUser = async (isRetry = false) => {
     try {
       const data = await getMe();
       setUser(data.user);
     } catch (error) {
       console.error('Failed to load user:', error);
-      localStorage.removeItem('accessToken');
-      setUser(null);
+      if (localStorage.getItem('accessToken') && !isRetry) {
+        try {
+          const { accessToken } = await refreshToken();
+          setAccessToken(accessToken);
+          await loadUser(true);
+        } catch (refreshError) {
+          localStorage.removeItem('accessToken');
+          setUser(null);
+        }
+      } else {
+        localStorage.removeItem('accessToken');
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +81,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate('/login');
     }
   }, [navigate]);
+
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      logout();
+    };
+    window.addEventListener("auth:logout", handleLogoutEvent);
+    return () => {
+      window.removeEventListener("auth:logout", handleLogoutEvent);
+    };
+  }, [logout]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (user) {
+      intervalId = setInterval(async () => {
+        try {
+          const { accessToken } = await refreshToken();
+          setAccessToken(accessToken);
+        } catch (error) {
+          console.error("Interval refresh failed", error);
+          logout();
+        }
+      }, 13 * 60 * 1000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, logout, setAccessToken]);
 
   const value = {
     user,
