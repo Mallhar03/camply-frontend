@@ -51,11 +51,11 @@ export async function apiFetch<T = unknown>(
             },
             credentials: 'include',
           });
-          
+
           if (!refreshRes.ok) {
             throw new Error('Refresh failed');
           }
-          
+
           const refreshBody = await refreshRes.json();
           if (refreshBody.data?.accessToken) {
             localStorage.setItem('accessToken', refreshBody.data.accessToken);
