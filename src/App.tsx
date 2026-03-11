@@ -15,7 +15,16 @@ import { SignUp } from "./components/SignUp";
 import { AuthProvider } from "./contexts/AuthContext";
 import PostPage from "./pages/PostPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
