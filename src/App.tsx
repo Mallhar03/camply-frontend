@@ -14,6 +14,7 @@ import { Login } from "./components/Login";
 import { SignUp } from "./components/SignUp";
 import { AuthProvider } from "./contexts/AuthContext";
 import PostPage from "./pages/PostPage";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="signup" element={<SignUp />} />
             </Route>
             <Route path="/posts/:id" element={<PostPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
