@@ -53,16 +53,16 @@ export function CreatePost({ onClose, onPostCreated }: CreatePostProps) {
         category: selectedCategory.toUpperCase(),
       });
 
+      setContent("");
+      setSelectedCategory("");
+      onClose();
+      
       onPostCreated?.(newPost);
 
       toast({
         title: "Post Created!",
         description: "Your post has been shared with the community.",
       });
-
-      setContent("");
-      setSelectedCategory("");
-      onClose();
     } catch (error) {
       toast({
         title: "Failed to create post",
