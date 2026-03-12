@@ -6,30 +6,23 @@ import {
   ReactNode,
   useCallback,
 } from 'react';
-import { User, getMe, logout as logoutService } from '@/services/auth';
+import { User, getMe, logout as logoutService, refreshToken } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
-  accessToken: string | null;  // exposed for feed/match/socket hooks
   isLoading: boolean;
   isAuthenticated: boolean;
   setUser: (user: User | null) => void;
   setAccessToken: (token: string) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  // Convenience helpers used by Login / SignUp
-  login: (identifier: string, password: string) => Promise<void>;
-  register: (name: string, username: string, email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [accessToken, _setAccessTokenState] = useState<string | null>(
-    () => localStorage.getItem('accessToken')
-  );
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -43,15 +36,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loadUser = async () => {
+  const loadUser = async (isRetry = false) => {
     try {
       const data = await getMe();
       setUser(data.user);
     } catch (error) {
       console.error('Failed to load user:', error);
-      localStorage.removeItem('accessToken');
-      _setAccessTokenState(null);
-      setUser(null);
+      if (localStorage.getItem('accessToken') && !isRetry) {
+        try {
+          const { accessToken } = await refreshToken();
+          setAccessToken(accessToken);
+          await loadUser(true);
+        } catch (refreshError) {
+          localStorage.removeItem('accessToken');
+          setUser(null);
+        }
+      } else {
+        localStorage.removeItem('accessToken');
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setAccessToken = useCallback((token: string) => {
     localStorage.setItem('accessToken', token);
-    _setAccessTokenState(token);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -75,38 +77,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('accessToken');
-      _setAccessTokenState(null);
       setUser(null);
       navigate('/login');
     }
   }, [navigate]);
 
-  // Convenience wrappers (used by Login/SignUp and our PostCard/HackathonMatch)
-  const login = useCallback(async (identifier: string, password: string) => {
-    const { login: loginService } = await import('@/services/auth');
-    const data = await loginService({ identifier, password });
-    setAccessToken(data.accessToken);
-    setUser(data.user);
-  }, []);
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      logout();
+    };
+    window.addEventListener("auth:logout", handleLogoutEvent);
+    return () => {
+      window.removeEventListener("auth:logout", handleLogoutEvent);
+    };
+  }, [logout]);
 
-  const register = useCallback(async (name: string, username: string, email: string, password: string) => {
-    const { register: registerService } = await import('@/services/auth');
-    const data = await registerService({ name, username, email, password });
-    setAccessToken(data.accessToken);
-    setUser(data.user);
-  }, []);
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
 
-  const value: AuthContextType = {
+    if (user) {
+      intervalId = setInterval(async () => {
+        try {
+          const { accessToken } = await refreshToken();
+          setAccessToken(accessToken);
+        } catch (error) {
+          console.error("Interval refresh failed", error);
+          logout();
+        }
+      }, 13 * 60 * 1000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, logout, setAccessToken]);
+
+  const value = {
     user,
-    accessToken,
     isLoading,
     isAuthenticated: !!user,
     setUser,
     setAccessToken,
     logout,
     refreshUser,
-    login,
-    register,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

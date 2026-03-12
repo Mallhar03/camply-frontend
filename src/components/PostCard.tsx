@@ -1,14 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrustBadge } from "@/components/TrustBadge";
-import { ChevronUp, ChevronDown, MessageCircle, Share, Send, X } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageCircle, Share, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { votePost, fetchComments, addComment, Comment } from "@/api/feed";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
+import { votePost, deletePost } from "@/services/feed";
+import { useAuth } from "@/contexts/AuthContext";
+import { CommentSection } from "@/components/CommentSection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PostCardProps {
   id: string;
@@ -22,113 +37,113 @@ interface PostCardProps {
   category: "query" | "solution" | "job" | "discussion";
   userVote?: 1 | -1 | null;
   className?: string;
+  onDelete?: (postId: string) => void;
 }
 
 const categoryColors = {
   query: "bg-blue-100 text-blue-800",
-  solution: "bg-green-100 text-green-800",
+  solution: "bg-green-100 text-green-800", 
   job: "bg-purple-100 text-purple-800",
-  discussion: "bg-orange-100 text-orange-800",
+  discussion: "bg-orange-100 text-orange-800"
 };
 
-export function PostCard({
+export function PostCard({ 
   id,
-  username,
-  trustLevel,
-  timeAgo,
-  content,
-  upvotes,
-  downvotes,
-  comments,
+  username, 
+  trustLevel, 
+  timeAgo, 
+  content, 
+  upvotes, 
+  downvotes, 
+  comments, 
   category,
-  userVote: initialUserVote = null,
+  userVote: initialUserVote,
   className,
+  onDelete
 }: PostCardProps) {
-  const [localUserVote, setLocalUserVote] = useState<1 | -1 | null>(initialUserVote);
-  const [localUpvotes, setLocalUpvotes] = useState(upvotes);
-  const [localDownvotes, setLocalDownvotes] = useState(downvotes);
+  const [userVote, setUserVote] = useState<1 | -1 | null>(initialUserVote ?? null);
+  const [currentUpvotes, setCurrentUpvotes] = useState(upvotes);
+  const [currentDownvotes, setCurrentDownvotes] = useState(downvotes);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState("");
+  const [currentComments, setCurrentComments] = useState(comments);
   const { toast } = useToast();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const { isAuthenticated, user } = useAuth();
+  const isOwner = user?.username === username;
 
-  // Fetch comments when panel is open
-  const { data: commentsData, isLoading: commentsLoading } = useQuery({
-    queryKey: ["comments", id],
-    queryFn: () => fetchComments(id),
-    enabled: showComments,
-  });
-
-  // Vote mutation
-  const voteMutation = useMutation({
-    mutationFn: (value: 1 | -1) => votePost(id, value),
-    onSuccess: (_data, value) => {
-      // Optimistic already applied; on success invalidate feed to sync counts
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
-    },
-    onError: () => {
-      // Rollback optimistic update on error
-      setLocalUserVote(initialUserVote);
-      setLocalUpvotes(upvotes);
-      setLocalDownvotes(downvotes);
-      toast({ title: "Vote failed", description: "Please try again.", variant: "destructive" });
-    },
-  });
-
-  // Comment mutation
-  const commentMutation = useMutation({
-    mutationFn: (content: string) => addComment(id, content),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", id] });
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
-      setCommentText("");
-      toast({ title: "Comment added!", description: "Your comment has been posted." });
-    },
-    onError: (err: any) => {
-      toast({ title: "Failed to comment", description: err?.message || "Please try again.", variant: "destructive" });
-    },
-  });
-
-  const handleVote = (type: 1 | -1) => {
-    if (!user) {
-      toast({ title: "Login required", description: "Please log in to vote.", variant: "destructive" });
+  const handleVote = async (type: 1 | -1) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to vote on posts.",
+      });
       return;
     }
+
+    // Save previous state for rollback
+    const prevVote = userVote;
+    const prevUpvotes = currentUpvotes;
+    const prevDownvotes = currentDownvotes;
 
     // Optimistic update
-    if (localUserVote === type) {
+    if (userVote === type) {
       // Toggle off
-      setLocalUserVote(null);
-      if (type === 1) setLocalUpvotes((p) => p - 1);
-      else setLocalDownvotes((p) => p - 1);
+      if (type === 1) setCurrentUpvotes(prev => prev - 1);
+      else setCurrentDownvotes(prev => prev - 1);
+      setUserVote(null);
     } else {
-      if (localUserVote === 1 && type === -1) {
-        setLocalUpvotes((p) => p - 1);
-        setLocalDownvotes((p) => p + 1);
-      } else if (localUserVote === -1 && type === 1) {
-        setLocalDownvotes((p) => p - 1);
-        setLocalUpvotes((p) => p + 1);
+      // Switch or new vote
+      if (userVote === 1 && type === -1) {
+        setCurrentUpvotes(prev => prev - 1);
+        setCurrentDownvotes(prev => prev + 1);
+      } else if (userVote === -1 && type === 1) {
+        setCurrentDownvotes(prev => prev - 1);
+        setCurrentUpvotes(prev => prev + 1);
       } else {
-        if (type === 1) setLocalUpvotes((p) => p + 1);
-        else setLocalDownvotes((p) => p + 1);
+        if (type === 1) setCurrentUpvotes(prev => prev + 1);
+        else setCurrentDownvotes(prev => prev + 1);
       }
-      setLocalUserVote(type);
+      setUserVote(type);
     }
 
-    voteMutation.mutate(type);
-  };
-
-  const handleAddComment = () => {
-    if (!user) {
-      toast({ title: "Login required", description: "Please log in to comment.", variant: "destructive" });
-      return;
+    try {
+      // API call — now returns real counts from backend
+      const result = await votePost(id, type);
+      // Sync with real server counts
+      if (result.upvotes !== undefined) setCurrentUpvotes(result.upvotes);
+      if (result.downvotes !== undefined) setCurrentDownvotes(result.downvotes);
+      if (result.userVote !== undefined) setUserVote(result.userVote);
+    } catch (error) {
+      // Revert to previous state on failure
+      setCurrentUpvotes(prevUpvotes);
+      setCurrentDownvotes(prevDownvotes);
+      setUserVote(prevVote);
+      toast({
+        title: "Vote Failed",
+        description: error instanceof Error ? error.message : "Could not record vote.",
+        variant: "destructive",
+      });
     }
-    if (!commentText.trim()) return;
-    commentMutation.mutate(commentText.trim());
   };
 
-  const commentList = commentsData?.comments || [];
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      await deletePost(id);
+      toast({ title: "Post deleted", description: "Your post has been removed." });
+      onDelete?.(id);
+    } catch (error) {
+      toast({
+        title: "Failed to delete",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  }
 
   return (
     <Card className={cn("p-6 hover:shadow-medium transition-all duration-300 animate-fade-in", className)}>
@@ -139,18 +154,24 @@ export function PostCard({
             variant="upvote"
             size="icon"
             onClick={() => handleVote(1)}
-            className={cn("h-8 w-8", localUserVote === 1 && "text-accent bg-accent/20")}
+            className={cn(
+              "h-8 w-8",
+              userVote === 1 && "text-accent bg-accent/20"
+            )}
           >
             <ChevronUp className="h-4 w-4" />
           </Button>
           <span className="text-sm font-medium text-foreground">
-            {localUpvotes - localDownvotes}
+            {currentUpvotes - currentDownvotes}
           </span>
           <Button
             variant="downvote"
             size="icon"
             onClick={() => handleVote(-1)}
-            className={cn("h-8 w-8", localUserVote === -1 && "text-destructive bg-destructive/20")}
+            className={cn(
+              "h-8 w-8",
+              userVote === -1 && "text-destructive bg-destructive/20"
+            )}
           >
             <ChevronDown className="h-4 w-4" />
           </Button>
@@ -159,7 +180,7 @@ export function PostCard({
         {/* Content Section */}
         <div className="flex-1 space-y-3">
           {/* Header */}
-          <div className="flex flex-wrap items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between group">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">{username}</span>
@@ -168,9 +189,51 @@ export function PostCard({
               <span className="text-sm text-muted-foreground">•</span>
               <span className="text-sm text-muted-foreground">{timeAgo}</span>
             </div>
-            <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
-              {category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
+                {category}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => {
+                      const postUrl = `${window.location.origin}/posts/${id}`;
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `Post by @${username} on Camply`,
+                          text: content.slice(0, 100) + (content.length > 100 ? "..." : ""),
+                          url: postUrl,
+                        }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(postUrl);
+                        toast({
+                          title: "Link Copied! 🔗",
+                          description: "Post link copied to clipboard.",
+                        });
+                      }
+                    }}
+                  >
+                    <Share className="h-4 w-4 mr-2" />
+                    Share Post
+                  </DropdownMenuItem>
+                  {isOwner && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive cursor-pointer"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Post
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Content */}
@@ -178,74 +241,47 @@ export function PostCard({
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
+            <Button 
+              variant="ghost" 
+              size="sm" 
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => setShowComments(!showComments)}
+              onClick={() => setShowComments(prev => !prev)}
             >
               <MessageCircle className="h-4 w-4" />
-              {commentList.length || comments} comments
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                navigator.clipboard.writeText(content);
-                toast({ title: "Shared!", description: "Post content copied to clipboard" });
-              }}
-            >
-              <Share className="h-4 w-4" />
-              Share
+              {currentComments} {showComments ? "▲ hide" : "▼ comments"}
             </Button>
           </div>
-
-          {/* Comment Section */}
-          {showComments && (
-            <div className="mt-4 space-y-3 border-t pt-3">
-              {commentsLoading && (
-                <p className="text-sm text-muted-foreground">Loading comments...</p>
-              )}
-              {commentList.map((c: Comment) => (
-                <div key={c.id} className="flex gap-2 items-start">
-                  <div className="flex-1 bg-secondary/50 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-foreground">{c.author.username}</span>
-                      <TrustBadge level={c.author.trustLevel} />
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-foreground">{c.content}</p>
-                  </div>
-                </div>
-              ))}
-              {commentList.length === 0 && !commentsLoading && (
-                <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
-              )}
-              {/* Add Comment Input */}
-              <div className="flex gap-2 mt-2">
-                <Input
-                  placeholder="Write a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAddComment(); }}}
-                  disabled={commentMutation.isPending}
-                  className="flex-1"
-                />
-                <Button
-                  size="icon"
-                  onClick={handleAddComment}
-                  disabled={!commentText.trim() || commentMutation.isPending}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {showComments && (
+        <CommentSection
+          postId={id}
+          postAuthorUsername={username}
+          onCommentCountChange={setCurrentComments}
+        />
+      )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Your post will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
