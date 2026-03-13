@@ -7,3 +7,4 @@ sync_*.log
 test_*.js
 test_*.ts
 tmp_*.js
+src/__local_tests__/

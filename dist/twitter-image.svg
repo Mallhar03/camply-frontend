@@ -1,0 +1,6 @@
+<svg width="1200" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="600" fill="#6366f1"/>
+  <text x="600" y="260" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">Camply</text>
+  <text x="600" y="340" font-family="Arial, sans-serif" font-size="32" fill="#e0e7ff" text-anchor="middle">Campus Social Network for Students</text>
+  <text x="600" y="400" font-family="Arial, sans-serif" font-size="24" fill="#c7d2fe" text-anchor="middle">Connect · Collaborate · Succeed</text>
+</svg>

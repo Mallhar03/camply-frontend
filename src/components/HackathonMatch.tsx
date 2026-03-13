@@ -6,8 +6,8 @@ import { Heart, X, MapPin, Code2, Loader2, RefreshCw } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { matchApi, MatchProfile } from "@/api/match";
-import { useAuth } from "@/hooks/useAuth";
+import { matchApi, MatchProfile } from "@/services/match";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 // ─── Swipe Card ───────────────────────────────────────────────────────────────
