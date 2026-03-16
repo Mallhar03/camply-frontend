@@ -7,3 +7,7 @@ if any contribute to this project please follow these steps:
 4. make your changes
 5. commit your changes
 6. push your changes
+
+## License
+
+MIT — see LICENSE.
