@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface TrustBadgeProps {
-  level: "bronze" | "silver" | "gold" | "platinum";
+  level: string;
   className?: string;
 }
 
@@ -30,7 +30,8 @@ const badgeConfig = {
 };
 
 export function TrustBadge({ level, className }: TrustBadgeProps) {
-  const config = badgeConfig[level];
+  const normalizedLevel = level?.toLowerCase() as "bronze" | "silver" | "gold" | "platinum";
+  const config = badgeConfig[normalizedLevel] ?? badgeConfig.bronze;
   
   return (
     <Badge 
@@ -38,9 +39,10 @@ export function TrustBadge({ level, className }: TrustBadgeProps) {
       className={cn(
         "flex items-center gap-1 text-xs font-medium",
         level === "bronze" && "bg-badge-bronze/20 text-badge-bronze border-badge-bronze/30",
-        level === "silver" && "bg-badge-silver/20 text-badge-silver border-badge-silver/30",
-        level === "gold" && "bg-badge-gold/20 text-badge-gold border-badge-gold/30", 
-        level === "platinum" && "bg-badge-platinum/20 text-badge-platinum border-badge-platinum/30",
+        normalizedLevel === "bronze" && "bg-badge-bronze/20 text-badge-bronze border-badge-bronze/30",
+        normalizedLevel === "silver" && "bg-badge-silver/20 text-badge-silver border-badge-silver/30",
+        normalizedLevel === "gold" && "bg-badge-gold/20 text-badge-gold border-badge-gold/30", 
+        normalizedLevel === "platinum" && "bg-badge-platinum/20 text-badge-platinum border-badge-platinum/30",
         "animate-scale-in",
         className
       )}

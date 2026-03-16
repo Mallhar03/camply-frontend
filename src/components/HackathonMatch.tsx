@@ -99,7 +99,7 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
           </div>
           <div className="flex items-center justify-center gap-2">
             <h3 className="text-xl font-bold text-foreground">@{profile.username}</h3>
-            <TrustBadge level={profile.trustLevel} />
+            <TrustBadge level={profile.trustLevel.toLowerCase()} />
           </div>
           {profile.college && (
             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
