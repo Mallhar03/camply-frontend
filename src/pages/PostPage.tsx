@@ -30,7 +30,7 @@ export default function PostPage() {
 
   return (
     <>
-      <Navigation onTabChange={() => {}} />
+      <Navigation onTabChange={() => { }} />
       <main className="md:ml-64 p-4">
         <div className="max-w-2xl mx-auto space-y-4">
 
@@ -71,7 +71,7 @@ export default function PostPage() {
                 <meta name="description" content={post.content.slice(0, 160)} />
                 <meta property="og:title" content={`Post by @${post.author.username} on Camply`} />
                 <meta property="og:description" content={post.content.slice(0, 200)} />
-                <meta property="og:url" content={`https://beta.camply.live/posts/${post.id}`} />
+                <meta property="og:url" content={`https://camply.live/posts/${post.id}`} />
                 <meta property="og:type" content="article" />
                 <meta name="twitter:card" content="summary" />
               </Helmet>
