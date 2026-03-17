@@ -3,12 +3,39 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrustBadge } from "@/components/TrustBadge";
-import { Loader2, LogOut, Mail, Calendar } from "lucide-react";
+import { Loader2, LogOut, Mail, Calendar, UserCheck, UserX, Ghost } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { matchApi } from "@/services/match";
+import { useToast } from "@/hooks/use-toast";
 
 export function Profile() {
   const { user, isLoading, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const invitationsQuery = useQuery({
+    queryKey: ["match-invitations"],
+    queryFn: () => matchApi.getInvitations(),
+    enabled: !!user,
+  });
+
+  const swipeMutation = useMutation({
+    mutationFn: ({ toUserId, action }: { toUserId: string; action: "like" | "pass" }) =>
+      matchApi.swipe(toUserId, action),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["match-invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["match-profiles"] });
+      if (result.matched) {
+        toast({ title: "It's a match! 🎉", description: "You can now chat with them." });
+      }
+    },
+  });
+
+  const handleInvitation = (toUserId: string, action: "like" | "pass") => {
+    swipeMutation.mutate({ toUserId, action });
+  };
 
   if (isLoading) {
     return (
@@ -116,6 +143,68 @@ export function Profile() {
             <div className="text-2xl font-bold text-primary">{user.trustScore}</div>
             <div className="text-sm text-muted-foreground">Trust Score</div>
           </Card>
+        </div>
+
+        {/* Pending Invitations */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Mail className="h-5 w-5 text-accent" />
+              Pending Invitations
+            </h3>
+            {invitationsQuery.data?.invitations && (
+              <Badge variant="secondary">{invitationsQuery.data.invitations.length}</Badge>
+            )}
+          </div>
+
+          {invitationsQuery.data?.invitations && invitationsQuery.data.invitations.length > 0 ? (
+            <div className="grid gap-4">
+              {invitationsQuery.data.invitations.map((inv) => (
+                <Card key={inv.id} className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-muted/30 border-accent/20">
+                  <div className="flex items-center gap-4 text-center md:text-left">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-accent/20 flex items-center justify-center shrink-0">
+                      {inv.avatar ? (
+                        <img src={inv.avatar} alt={inv.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-accent font-bold">{inv.name?.[0] || inv.username[0]}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground">@{inv.username}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{inv.bio || "No bio yet"}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="default" 
+                      className="bg-accent hover:bg-accent/90 text-white gap-1"
+                      onClick={() => handleInvitation(inv.id, "like")}
+                      disabled={swipeMutation.isPending}
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Accept
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-muted-foreground hover:text-destructive gap-1"
+                      onClick={() => handleInvitation(inv.id, "pass")}
+                      disabled={swipeMutation.isPending}
+                    >
+                      <UserX className="h-4 w-4" />
+                      Ignore
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-6 border-dashed bg-muted/10 flex flex-col items-center justify-center text-center opacity-60">
+              <Ghost className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground italic text-center">No pending invitations. Start swiping!</p>
+            </Card>
+          )}
         </div>
 
         {/* Actions */}

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchApi, MatchProfile } from "@/services/match";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 // ─── Swipe Card ───────────────────────────────────────────────────────────────
@@ -172,6 +173,7 @@ export function HackathonMatch() {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Persist index to session storage
@@ -239,17 +241,6 @@ export function HackathonMatch() {
     [currentProfile, isAnimatingOut, swipeMutation]
   );
 
-  // Not logged in
-  if (!user) {
-    return (
-      <Card className="p-6 max-w-md mx-auto text-center space-y-3">
-        <Heart className="h-8 w-8 text-accent mx-auto" />
-        <h2 className="text-lg font-semibold">Find Teammates</h2>
-        <p className="text-sm text-muted-foreground">Log in to discover potential hackathon teammates.</p>
-      </Card>
-    );
-  }
-
   // ── Real-time new user detection ──────────────────────
   useEffect(() => {
     if (!user || !accessToken) return;
@@ -275,7 +266,34 @@ export function HackathonMatch() {
       socket.off("new-user-joined", handleNewUser);
       socket.close();
     };
-  }, [user, !!currentProfile]);
+  }, [user, accessToken, !!currentProfile]);
+
+  const invitationQuery = useQuery({
+    queryKey: ["match-invitations"],
+    queryFn: () => matchApi.getInvitations(),
+    enabled: !!user,
+  });
+
+  const invitationCount = invitationQuery.data?.invitations.length || 0;
+
+  // Sync index if data changes (e.g. refresh returns fewer profiles)
+  useEffect(() => {
+    if (profiles.length > 0 && currentIndex >= profiles.length) {
+      setCurrentIndex(0);
+      sessionStorage.removeItem("match_current_index");
+    }
+  }, [profiles.length, currentIndex]);
+
+  // Not logged in early return
+  if (!user) {
+    return (
+      <Card className="p-6 max-w-md mx-auto text-center space-y-3">
+        <Heart className="h-8 w-8 text-accent mx-auto" />
+        <h2 className="text-lg font-semibold">Find Teammates</h2>
+        <p className="text-sm text-muted-foreground">Log in to discover potential hackathon teammates.</p>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -299,19 +317,34 @@ export function HackathonMatch() {
 
   // All profiles swiped
   if (!currentProfile) {
+    const isPoolEmpty = data?.isPoolEmpty;
+
     return (
       <Card className="p-8 max-w-md mx-auto text-center space-y-6 bg-card/60 backdrop-blur-md border-border shadow-2xl">
         <div className="space-y-2">
-          <div className="text-5xl animate-bounce mb-4">👀</div>
-          <h2 className="text-2xl font-bold text-foreground">You've met everyone for now</h2>
+          <div className="text-5xl animate-bounce mb-4">{isPoolEmpty ? "🚀" : "👀"}</div>
+          <h2 className="text-2xl font-bold text-foreground">
+            {isPoolEmpty ? "You've sent match requests to everyone!" : "You've met everyone for now"}
+          </h2>
           <p className="text-muted-foreground leading-relaxed">
-            New teammates join daily. Reset to see them again or wait for fresh faces.
+            {isPoolEmpty 
+              ? "Great job! Now wait for them to accept or check your incoming invitations." 
+              : "New teammates join daily. Reset to see people you passed on or wait for fresh faces."}
           </p>
         </div>
 
-        {newUserCount > 0 && (
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium animate-pulse">
-            ✨ {newUserCount} new {newUserCount === 1 ? 'person' : 'people'} joined!
+        {(newUserCount > 0 || invitationCount > 0) && (
+          <div className="flex flex-col gap-2 items-center">
+            {newUserCount > 0 && (
+              <div className="inline-flex items-center px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium animate-pulse">
+                ✨ {newUserCount} new {newUserCount === 1 ? 'person' : 'people'} joined!
+              </div>
+            )}
+            {invitationCount > 0 && (
+              <div className="inline-flex items-center px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-500 text-sm font-medium">
+                📩 {invitationCount} new {invitationCount === 1 ? 'invitation' : 'invitations'}!
+              </div>
+            )}
           </div>
         )}
 
@@ -333,14 +366,9 @@ export function HackathonMatch() {
           <Button
             variant="default"
             className="flex-1 h-12 bg-accent hover:bg-accent/90 text-white"
-            onClick={() =>
-              toast({
-                title: "Coming Soon! 🚀",
-                description: "The 'Matches' feature is currently in testing and will be available shortly.",
-              })
-            }
+            onClick={() => navigate("/profile")}
           >
-            Check my matches
+            {invitationCount > 0 ? `Manage Invitations (${invitationCount})` : "Check my matches"}
           </Button>
         </div>
       </Card>

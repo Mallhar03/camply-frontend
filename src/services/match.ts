@@ -14,6 +14,7 @@ export interface MatchProfile {
 
 export interface ProfilesResponse {
   profiles: MatchProfile[];
+  isPoolEmpty?: boolean;
 }
 
 export interface SwipeResponse {
@@ -42,6 +43,12 @@ export const matchApi = {
   /** Fetch mutual matches */
   getMatches: async (): Promise<{ matches: MatchProfile[] }> => {
     const response = await apiFetch<{ matches: MatchProfile[] }>('/api/v1/match/matches');
+    return response.data!;
+  },
+
+  /** Fetch incoming likes (invitations) */
+  getInvitations: async (): Promise<{ invitations: MatchProfile[] }> => {
+    const response = await apiFetch<{ invitations: MatchProfile[] }>('/api/v1/match/invitations');
     return response.data!;
   },
 
