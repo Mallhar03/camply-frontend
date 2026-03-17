@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrustBadge } from "@/components/TrustBadge";
 import { Heart, X, MapPin, Code2, Loader2, RefreshCw } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { io } from "socket.io-client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchApi, MatchProfile } from "@/services/match";
@@ -21,15 +22,20 @@ interface SwipeCardProps {
 function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
+  const lastX = useRef(0);
+  const lastTime = useRef(0);
   const currentX = useRef(0);
   const isDragging = useRef(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<"like" | "pass" | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+  const [exitDirection, setExitDirection] = useState(0);
   const SWIPE_THRESHOLD = 80;
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (disabled) return;
     startX.current = e.clientX;
+    lastTime.current = Date.now();
     isDragging.current = true;
     cardRef.current?.setPointerCapture(e.pointerId);
   };
@@ -37,6 +43,7 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current) return;
     currentX.current = e.clientX - startX.current;
+    lastX.current = e.clientX;
     setDragOffset(currentX.current);
     if (currentX.current > 30) setSwipeDirection("like");
     else if (currentX.current < -30) setSwipeDirection("pass");
@@ -47,11 +54,13 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
     if (!isDragging.current) return;
     isDragging.current = false;
     const offset = currentX.current;
+    const velocity = Math.abs(offset) / (Date.now() - lastTime.current);
 
-    if (offset > SWIPE_THRESHOLD) {
-      onSwipe("like");
-    } else if (offset < -SWIPE_THRESHOLD) {
-      onSwipe("pass");
+    if (Math.abs(offset) > SWIPE_THRESHOLD || (Math.abs(offset) > 30 && velocity > 0.5)) {
+      const dir = offset > 0 ? 1 : -1;
+      setIsExiting(true);
+      setExitDirection(dir);
+      setTimeout(() => onSwipe(dir === 1 ? "like" : "pass"), 300);
     } else {
       // snap back
       setDragOffset(0);
@@ -68,9 +77,15 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
       ref={cardRef}
       className="relative select-none touch-none cursor-grab active:cursor-grabbing"
       style={{
-        transform: `translateX(${dragOffset}px) rotate(${rotation}deg)`,
-        opacity,
-        transition: isDragging.current ? "none" : "transform 0.3s ease, opacity 0.3s ease",
+        transform: isExiting
+          ? `translateX(${exitDirection * window.innerWidth}px) rotate(${exitDirection * 30}deg)`
+          : `translateX(${dragOffset}px) rotate(${rotation}deg)`,
+        opacity: isExiting ? 0 : opacity,
+        transition: isDragging.current
+          ? "none"
+          : isExiting
+          ? "transform 0.3s ease-out, opacity 0.3s ease-out"
+          : "transform 0.3s ease, opacity 0.3s ease",
         willChange: "transform",
       }}
       onPointerDown={handlePointerDown}
@@ -150,9 +165,10 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
 // ─── Main HackathonMatch ──────────────────────────────────────────────────────
 export function HackathonMatch() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [newUserCount, setNewUserCount] = useState(0);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -178,13 +194,29 @@ export function HackathonMatch() {
       } else if (action === "like") {
         toast({ title: "Request sent!", description: "If they connect back, it's a match!" });
       }
-      // Advance to next profile
-      setCurrentIndex((prev) => prev + 1);
       setIsAnimatingOut(false);
     },
     onError: (err: any) => {
+      setCurrentIndex((prev) => prev - 1);
       setIsAnimatingOut(false);
       toast({ title: "Action failed", description: err?.message || "Please try again.", variant: "destructive" });
+    },
+  });
+
+  const resetRejectedMutation = useMutation({
+    mutationFn: () => matchApi.resetRejected(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["match-profiles"] });
+      setCurrentIndex(0);
+      setNewUserCount(0);
+      toast({ title: "Profiles refreshed!", description: "You can now see everyone again." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Reset failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -192,6 +224,7 @@ export function HackathonMatch() {
     (action: "like" | "pass") => {
       if (!currentProfile || isAnimatingOut || swipeMutation.isPending) return;
       setIsAnimatingOut(true);
+      setCurrentIndex((prev) => prev + 1);
       swipeMutation.mutate({ toUserId: currentProfile.id, action });
     },
     [currentProfile, isAnimatingOut, swipeMutation]
@@ -207,6 +240,33 @@ export function HackathonMatch() {
       </Card>
     );
   }
+
+  // ── Real-time new user detection ──────────────────────
+  useEffect(() => {
+    if (!user || !accessToken) return;
+
+    const socket = io("/", {
+      path: "/socket.io",
+      auth: { token: accessToken },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+
+    const isExhausted = !currentProfile;
+
+    const handleNewUser = () => {
+      if (isExhausted) {
+        setNewUserCount((prev) => prev + 1);
+      }
+    };
+
+    socket.on("new-user-joined", handleNewUser);
+
+    return () => {
+      socket.off("new-user-joined", handleNewUser);
+      socket.close();
+    };
+  }, [user, !!currentProfile]);
 
   if (isLoading) {
     return (
@@ -231,22 +291,49 @@ export function HackathonMatch() {
   // All profiles swiped
   if (!currentProfile) {
     return (
-      <Card className="p-8 max-w-md mx-auto text-center space-y-4">
-        <div className="text-4xl">🎉</div>
-        <h2 className="text-lg font-semibold text-foreground">You're all caught up!</h2>
-        <p className="text-sm text-muted-foreground">
-          You've seen all available profiles. Check back later for new teammates.
-        </p>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setCurrentIndex(0);
-            queryClient.invalidateQueries({ queryKey: ["match-profiles"] });
-            refetch();
-          }}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" /> Find More
-        </Button>
+      <Card className="p-8 max-w-md mx-auto text-center space-y-6 bg-card/60 backdrop-blur-md border-border shadow-2xl">
+        <div className="space-y-2">
+          <div className="text-5xl animate-bounce mb-4">👀</div>
+          <h2 className="text-2xl font-bold text-foreground">You've met everyone for now</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            New teammates join daily. Reset to see them again or wait for fresh faces.
+          </p>
+        </div>
+
+        {newUserCount > 0 && (
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium animate-pulse">
+            ✨ {newUserCount} new {newUserCount === 1 ? 'person' : 'people'} joined!
+          </div>
+        )}
+
+        <div className="flex gap-4">
+          <Button
+            variant="outline"
+            className="flex-1 h-12"
+            onClick={() => resetRejectedMutation.mutate()}
+            disabled={resetRejectedMutation.isPending}
+          >
+            {resetRejectedMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            See profiles again
+          </Button>
+
+          <Button
+            variant="default"
+            className="flex-1 h-12 bg-accent hover:bg-accent/90 text-white"
+            onClick={() =>
+              toast({
+                title: "Coming Soon! 🚀",
+                description: "The 'Matches' feature is currently in testing and will be available shortly.",
+              })
+            }
+          >
+            Check my matches
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -266,6 +353,7 @@ export function HackathonMatch() {
 
       {/* Swipe card */}
       <SwipeCard
+        key={currentProfile.id}
         profile={currentProfile}
         onSwipe={handleSwipe}
         disabled={swipeMutation.isPending || isAnimatingOut}

@@ -44,4 +44,12 @@ export const matchApi = {
     const response = await apiFetch<{ matches: MatchProfile[] }>('/api/v1/match/matches');
     return response.data!;
   },
+
+  /** Reset REJECTED swipes for the current user */
+  resetRejected: async (): Promise<{ reset: boolean }> => {
+    const response = await apiFetch<{ reset: boolean }>('/api/v1/match/reset-rejected', {
+      method: 'POST',
+    });
+    return response.data!;
+  },
 };
