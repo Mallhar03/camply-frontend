@@ -1,6 +1,7 @@
 node_modules
 # Local Dev Artifacts
 DEVLOG.md
+.env.local
 sync_*.sh
 sync_*.log
 *.txt
