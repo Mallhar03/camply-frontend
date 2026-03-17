@@ -110,11 +110,11 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
         <div className="text-center space-y-2 mb-4">
           {/* Avatar placeholder / initial */}
           <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto text-2xl font-bold text-accent border-2 border-accent/30">
-            {profile.name?.[0]?.toUpperCase() || profile.username[0].toUpperCase()}
+            {profile?.name?.[0]?.toUpperCase() || profile?.username?.[0]?.toUpperCase() || "?"}
           </div>
           <div className="flex items-center justify-center gap-2">
-            <h3 className="text-xl font-bold text-foreground">@{profile.username}</h3>
-            <TrustBadge level={profile.trustLevel.toLowerCase()} />
+            <h3 className="text-xl font-bold text-foreground">@{profile?.username || "unknown"}</h3>
+            <TrustBadge level={(profile?.trustLevel || "low").toLowerCase()} />
           </div>
           {profile.college && (
             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
@@ -164,12 +164,20 @@ function SwipeCard({ profile, onSwipe, disabled }: SwipeCardProps) {
 
 // ─── Main HackathonMatch ──────────────────────────────────────────────────────
 export function HackathonMatch() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const saved = sessionStorage.getItem("match_current_index");
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [newUserCount, setNewUserCount] = useState(0);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
+
+  // Persist index to session storage
+  useEffect(() => {
+    sessionStorage.setItem("match_current_index", currentIndex.toString());
+  }, [currentIndex]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["match-profiles"],
@@ -197,7 +205,7 @@ export function HackathonMatch() {
       setIsAnimatingOut(false);
     },
     onError: (err: any) => {
-      setCurrentIndex((prev) => prev - 1);
+      setCurrentIndex((prev) => Math.max(0, prev - 1));
       setIsAnimatingOut(false);
       toast({ title: "Action failed", description: err?.message || "Please try again.", variant: "destructive" });
     },
@@ -208,6 +216,7 @@ export function HackathonMatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["match-profiles"] });
       setCurrentIndex(0);
+      sessionStorage.removeItem("match_current_index");
       setNewUserCount(0);
       toast({ title: "Profiles refreshed!", description: "You can now see everyone again." });
     },
