@@ -11,6 +11,8 @@ export interface User {
   avatar?: string;
   college?: string;
   skills?: string[];
+  onboardingComplete: boolean;
+  hackathonsCount?: string; // "1+", "5+", "10+"
   trustLevel: TrustLevel;
   trustScore: number;
   createdAt: string;
@@ -64,6 +66,19 @@ export async function logout() {
 export async function refreshToken() {
   const response = await apiFetch<{ accessToken: string }>('/api/v1/auth/refresh', {
     method: 'POST',
+  });
+  return response.data!;
+}
+
+// Submit first-time onboarding data
+export async function completeOnboarding(data: {
+  skills: string[];
+  hackathonsCount: string;
+  bio: string;
+}): Promise<{ user: User }> {
+  const response = await apiFetch<{ user: User }>('/api/v1/users/me/onboarding', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
   return response.data!;
 }

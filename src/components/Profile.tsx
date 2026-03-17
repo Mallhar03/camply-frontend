@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrustBadge } from "@/components/TrustBadge";
-import { Loader2, LogOut, Mail, Calendar } from "lucide-react";
+import { Loader2, LogOut, Mail, Calendar, Trophy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export function Profile() {
   const { user, isLoading, logout } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -60,6 +62,12 @@ export function Profile() {
               <TrustBadge level={trustLevel} />
             </div>
             <p className="text-lg text-muted-foreground">@{user.username}</p>
+            {user.hackathonsCount && (
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                <span>{user.hackathonsCount} Hackathons</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -120,7 +128,13 @@ export function Profile() {
 
         {/* Actions */}
         <div className="flex gap-4">
-          <Button variant="outline" className="flex-1">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() =>
+              toast({ title: "Coming soon", description: "Profile editing will be available soon." })
+            }
+          >
             Edit Profile
           </Button>
           <Button

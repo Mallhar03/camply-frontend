@@ -15,6 +15,9 @@ import { SignUp } from "./components/SignUp";
 import { AuthProvider } from "./contexts/AuthContext";
 import PostPage from "./pages/PostPage";
 import AuthCallback from "./pages/AuthCallback";
+import { OnboardingWizard } from "./components/OnboardingWizard";
+import { useAuth } from "./contexts/AuthContext";
+import { ReactNode } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +30,16 @@ const queryClient = new QueryClient({
   },
 });
 
+function AppShell({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  return (
+    <>
+      {children}
+      {!isLoading && user && !user.onboardingComplete && <OnboardingWizard />}
+    </>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -34,21 +47,23 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />}>
-              <Route index element={<Feed />} />
-              <Route path="daily" element={<Explore />} />
-              <Route path="match" element={<Match />} />
-              <Route path="placements" element={<Placements />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="login" element={<Login />} />
-              <Route path="signup" element={<SignUp />} />
-            </Route>
-            <Route path="/posts/:id" element={<PostPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppShell>
+            <Routes>
+              <Route path="/" element={<Index />}>
+                <Route index element={<Feed />} />
+                <Route path="daily" element={<Explore />} />
+                <Route path="match" element={<Match />} />
+                <Route path="placements" element={<Placements />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="login" element={<Login />} />
+                <Route path="signup" element={<SignUp />} />
+              </Route>
+              <Route path="/posts/:id" element={<PostPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AppShell>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
