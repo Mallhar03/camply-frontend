@@ -80,6 +80,11 @@ export function Navigation({ onTabChange }: NavigationProps) {
         </div>
       </nav>
 
+      {/* Mobile Top Mode Toggle */}
+      <div className="fixed top-4 right-4 z-50 md:hidden">
+        <ModeToggle />
+      </div>
+
       {/* Desktop Side Navigation */}
       <nav className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-background border-r border-border flex-col z-40">
         <div className="p-6">

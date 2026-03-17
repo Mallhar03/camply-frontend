@@ -146,7 +146,55 @@ export function PostCard({
   }
 
   return (
-    <Card className={cn("p-6 hover:shadow-medium transition-all duration-300 animate-fade-in", className)}>
+    <Card className={cn("relative p-6 hover:shadow-medium transition-all duration-300 animate-fade-in", className)}>
+      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 text-xs text-muted-foreground">
+        {timeAgo}
+      </div>
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
+        <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
+          {category}
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => {
+                const postUrl = `${window.location.origin}/posts/${id}`;
+                if (navigator.share) {
+                  navigator.share({
+                    title: `Post by @${username} on Camply`,
+                    text: content.slice(0, 100) + (content.length > 100 ? "..." : ""),
+                    url: postUrl,
+                  }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(postUrl);
+                  toast({
+                    title: "Link Copied! 🔗",
+                    description: "Post link copied to clipboard.",
+                  });
+                }
+              }}
+            >
+              <Share className="h-4 w-4 mr-2" />
+              Share Post
+            </DropdownMenuItem>
+            {isOwner && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive cursor-pointer"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Post
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Voting Section */}
         <div className="flex flex-row sm:flex-col items-center gap-2 pt-1">
@@ -180,59 +228,12 @@ export function PostCard({
         {/* Content Section */}
         <div className="flex-1 space-y-3">
           {/* Header */}
-          <div className="flex flex-wrap items-center justify-between group">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 group pr-20 sm:pr-28">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">{username}</span>
                 <TrustBadge level={trustLevel} />
               </div>
-              <span className="text-sm text-muted-foreground">•</span>
-              <span className="text-sm text-muted-foreground">{timeAgo}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={cn("px-2 py-1 rounded-full text-xs font-medium", categoryColors[category])}>
-                {category}
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => {
-                      const postUrl = `${window.location.origin}/posts/${id}`;
-                      if (navigator.share) {
-                        navigator.share({
-                          title: `Post by @${username} on Camply`,
-                          text: content.slice(0, 100) + (content.length > 100 ? "..." : ""),
-                          url: postUrl,
-                        }).catch(() => {});
-                      } else {
-                        navigator.clipboard.writeText(postUrl);
-                        toast({
-                          title: "Link Copied! 🔗",
-                          description: "Post link copied to clipboard.",
-                        });
-                      }
-                    }}
-                  >
-                    <Share className="h-4 w-4 mr-2" />
-                    Share Post
-                  </DropdownMenuItem>
-                  {isOwner && (
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive cursor-pointer"
-                      onClick={() => setShowDeleteDialog(true)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Post
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
 
