@@ -152,7 +152,7 @@ function ChatView({ room, onBack, roomColor }: ChatViewProps) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const { messages, isLoading, isConnected, isSending, typingUsers, sendMessage, emitTyping, loadMore, hasMore } =
-    useCommunityChat(room.id, accessToken);
+    useCommunityChat(room.id, accessToken, room._count.members);
 
   // Filter own username from typing indicator
   const otherTypingUsers = typingUsers.filter((u) => u !== user?.username);
@@ -232,17 +232,9 @@ function ChatView({ room, onBack, roomColor }: ChatViewProps) {
 
               return (
                 <div key={msg.id} className="flex gap-3 group hover:bg-muted/20 p-2 rounded-lg transition-all duration-200">
-                  {msg.sender.avatar ? (
-                    <img
-                      src={msg.sender.avatar}
-                      alt={msg.sender.username}
-                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                      {initials || "?"}
-                    </div>
-                  )}
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                    {initials || "?"}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">{msg.sender.username}</span>

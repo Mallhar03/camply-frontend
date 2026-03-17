@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { ChatMessage, getRoomMessages } from '@/services/chat';
 import { useToast } from '@/hooks/use-toast';
+import { API_BASE_URL } from '@/lib/api';
 
 export interface UseCommunityChat {
   messages: ChatMessage[];
@@ -17,7 +18,8 @@ export interface UseCommunityChat {
 
 export function useCommunityChat(
   chatId: string | null,
-  accessToken: string | null
+  accessToken: string | null,
+  memberCount: number = 0
 ): UseCommunityChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,11 +69,14 @@ export function useCommunityChat(
         setIsLoading(false);
 
         // 2. Create socket AFTER http resolves
-        const socket = io('/', {
+        const socketUrl = API_BASE_URL || window.location.origin;
+        const socket = io(socketUrl, {
           path: '/socket.io',
           auth: { token: accessToken },
           reconnectionAttempts: 5,
           reconnectionDelay: 2000,
+          transports: ['websocket', 'polling'], // Prioritize websocket for production
+          withCredentials: true,
         });
 
         socketRef.current = socket;
@@ -141,6 +146,10 @@ export function useCommunityChat(
 
   // ── Debounced typing emitter ──────────────────────────────────────────────
   const emitTyping = useCallback(() => {
+    // Optimization for scale: don't broadcast typing events in massive rooms (100+ users)
+    // to prevent thundering herd / broadcast storms on the backend WebSocket server
+    if (memberCount >= 100) return;
+    
     if (!socketRef.current || !chatId || !isConnected) return;
     if (typingTimerRef.current) return; // already debouncing — wait for it
     socketRef.current.emit('typing', { chatId });
