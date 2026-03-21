@@ -11,8 +11,9 @@ export interface Notification {
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  const res = await apiFetch<Notification[]>('/api/v1/notifications');
-  return res.data || [];
+  const res = await apiFetch<{ notifications: Notification[], unreadCount: number }>('/api/v1/notifications');
+  // ✅ Extract the notifications array from the data object
+  return res.data?.notifications || [];
 }
 
 export async function markAsRead(id: string): Promise<void> {
