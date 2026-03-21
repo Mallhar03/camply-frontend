@@ -6,6 +6,7 @@ export interface CommunityRoom {
   id: string;
   name: string;
   topic: string;
+  creatorId?: string; // Opt-in since backend might not always return it for old rooms
   _count: { members: number; messages: number };
   messages: Array<{ content: string; createdAt: string; sender: { username: string } }>;
 }
@@ -47,5 +48,13 @@ export async function getRoomMessages(
   const response = await apiFetch<{ messages: ChatMessage[]; nextCursor: string | null }>(
     `/api/v1/chats/${chatId}/messages?${params.toString()}`
   );
+  return response.data!;
+}
+/** Create a new community chat room (Pro only) */
+export async function createCommunityRoom(name: string, topic: string): Promise<CommunityRoom> {
+  const response = await apiFetch<CommunityRoom>('/api/v1/chats', {
+    method: 'POST',
+    body: JSON.stringify({ name, topic, isPublic: true })
+  });
   return response.data!;
 }

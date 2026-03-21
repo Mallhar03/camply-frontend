@@ -11,6 +11,7 @@ export interface UseCommunityChat {
   isSending: boolean;
   typingUsers: string[];
   sendMessage: (content: string) => void;
+  deleteMessage: (messageId: string) => void;
   emitTyping: () => void;
   loadMore: () => void;
   hasMore: boolean;
@@ -22,6 +23,7 @@ export function useCommunityChat(
   memberCount: number = 0
 ): UseCommunityChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // ... rest of state stays same ...
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -35,18 +37,15 @@ export function useCommunityChat(
 
   const { toast } = useToast();
 
-  // ── Reset + (re)initialize when chatId changes ─────────────────────────────
   useEffect(() => {
     if (!chatId || !accessToken) return;
 
-    // Clean up previous socket if any
     if (socketRef.current) {
       socketRef.current.emit('leave-chat', chatId);
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
-    // Reset state for the new room
     setMessages([]);
     setCursor(null);
     setHasMore(false);
@@ -54,7 +53,6 @@ export function useCommunityChat(
     setIsConnected(false);
     setTypingUsers([]);
 
-    // 1. Fetch initial messages via HTTP
     getRoomMessages(chatId)
       .then(({ messages: initialMessages, nextCursor }) => {
         setMessages(initialMessages);
@@ -68,14 +66,13 @@ export function useCommunityChat(
       .finally(() => {
         setIsLoading(false);
 
-        // 2. Create socket AFTER http resolves
         const socketUrl = API_BASE_URL || window.location.origin;
         const socket = io(socketUrl, {
           path: '/socket.io',
           auth: { token: accessToken },
           reconnectionAttempts: 5,
           reconnectionDelay: 2000,
-          transports: ['websocket', 'polling'], // Prioritize websocket for production
+          transports: ['websocket', 'polling'],
           withCredentials: true,
         });
 
@@ -83,27 +80,25 @@ export function useCommunityChat(
 
         socket.on('connect', () => {
           setIsConnected(true);
-          // 3. Join the chat room AFTER socket is connected
           socket.emit('join-chat', chatId);
         });
 
         socket.on('disconnect', () => setIsConnected(false));
 
-        // 4. Listen for new messages
         socket.on('new-message', (msg: ChatMessage) => {
           setMessages((prev) => [...prev, msg]);
         });
 
-        // 5. Typing indicators
+        socket.on('message-deleted', ({ messageId }: { messageId: string }) => {
+          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        });
+
         socket.on('user-typing', ({ username }: { username: string }) => {
-          // Skip own typing indicator (check by username from auth — we only have access to the token here;
-          // the component filters based on the user from useAuth when needed)
           setTypingUsers((prev) => {
             if (prev.includes(username)) return prev;
             return [...prev, username];
           });
 
-          // Auto-remove after 3 seconds
           if (typingUserTimers.current[username]) {
             clearTimeout(typingUserTimers.current[username]);
           }
@@ -115,21 +110,18 @@ export function useCommunityChat(
       });
 
     return () => {
-      // Cleanup on unmount / chatId change
       const socket = socketRef.current;
       if (socket) {
         socket.emit('leave-chat', chatId);
         socket.disconnect();
         socketRef.current = null;
       }
-      // Clear all typing timers
       Object.values(typingUserTimers.current).forEach(clearTimeout);
       typingUserTimers.current = {};
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
-  }, [chatId, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chatId, accessToken]);
 
-  // ── Send message ──────────────────────────────────────────────────────────
   const sendMessage = useCallback(
     (content: string) => {
       if (!socketRef.current || !chatId) return;
@@ -144,21 +136,24 @@ export function useCommunityChat(
     [chatId, isConnected, toast]
   );
 
-  // ── Debounced typing emitter ──────────────────────────────────────────────
+  const deleteMessage = useCallback(
+    (messageId: string) => {
+      if (!socketRef.current || !chatId || !isConnected) return;
+      socketRef.current.emit('delete-message', { chatId, messageId });
+    },
+    [chatId, isConnected]
+  );
+
   const emitTyping = useCallback(() => {
-    // Optimization for scale: don't broadcast typing events in massive rooms (100+ users)
-    // to prevent thundering herd / broadcast storms on the backend WebSocket server
     if (memberCount >= 100) return;
-    
     if (!socketRef.current || !chatId || !isConnected) return;
-    if (typingTimerRef.current) return; // already debouncing — wait for it
+    if (typingTimerRef.current) return;
     socketRef.current.emit('typing', { chatId });
     typingTimerRef.current = setTimeout(() => {
       typingTimerRef.current = null;
     }, 1000);
-  }, [chatId, isConnected]);
+  }, [chatId, isConnected, memberCount]);
 
-  // ── Load more (older) messages ─────────────────────────────────────────────
   const loadMore = useCallback(async () => {
     if (!chatId || !cursor || !hasMore) return;
     try {
@@ -179,6 +174,7 @@ export function useCommunityChat(
     isSending,
     typingUsers,
     sendMessage,
+    deleteMessage,
     emitTyping,
     loadMore,
     hasMore,

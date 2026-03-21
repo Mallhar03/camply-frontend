@@ -16,6 +16,8 @@ interface CommentSectionProps {
   onCommentCountChange: (count: number) => void;
 }
 
+import { useMentionAutocomplete } from "@/hooks/useMentionAutocomplete";
+
 export function CommentSection({ postId, postAuthorUsername, onCommentCountChange }: CommentSectionProps) {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -24,6 +26,9 @@ export function CommentSection({ postId, postAuthorUsername, onCommentCountChang
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const { suggestions, handleInput, insertMention, isActive } = useMentionAutocomplete();
+
+  // ... rest of logic remains same ...
   const { data: comments = [], isLoading } = useQuery({
     queryKey: ["comments", postId],
     queryFn: () => getPostComments(postId),
@@ -126,27 +131,51 @@ export function CommentSection({ postId, postAuthorUsername, onCommentCountChang
       ))}
 
       {isAuthenticated ? (
-        <div className="flex gap-2 pt-2">
-          <Textarea
-            placeholder="Write a comment..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            className="min-h-[60px] resize-none text-sm"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-          />
-          <Button
-            size="sm"
-            className="self-end"
-            disabled={!commentText.trim() || isSubmitting}
-            onClick={handleSubmit}
-          >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
-          </Button>
+        <div className="relative flex flex-col gap-2 pt-2">
+          {isActive && (
+            <div className="absolute bottom-full left-0 w-full bg-card border rounded-lg shadow-lg z-50 mb-2 overflow-hidden">
+              {suggestions.map((u) => (
+                <button
+                  key={u.id}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                  onClick={() => {
+                    setCommentText(insertMention(u, commentText));
+                    handleInput('', 0); // close
+                  }}
+                >
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                    {u.username[0].toUpperCase()}
+                  </div>
+                  <span>@{u.username}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Write a comment..."
+              value={commentText}
+              onChange={(e) => {
+                setCommentText(e.target.value);
+                handleInput(e.target.value, e.target.selectionEnd);
+              }}
+              className="min-h-[60px] resize-none text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              className="self-end"
+              disabled={!commentText.trim() || isSubmitting}
+              onClick={handleSubmit}
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+            </Button>
+          </div>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground text-center py-2">
