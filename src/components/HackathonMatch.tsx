@@ -207,9 +207,39 @@ export function HackathonMatch() {
       setIsAnimatingOut(false);
     },
     onError: (err: any) => {
+      // Handle duplicate guard (409 Conflict)
+      if (err?.statusCode === 409) {
+        // Silently skip - user already interacted with this profile
+        // Do not revert index, do not show error toast
+        // Just reset animation state so next card loads
+        setIsAnimatingOut(false);
+        return;
+      }
+      
       setCurrentIndex((prev) => Math.max(0, prev - 1));
       setIsAnimatingOut(false);
       toast({ title: "Action failed", description: err?.message || "Please try again.", variant: "destructive" });
+    },
+  });
+
+  const resetAllMutation = useMutation({
+    mutationFn: () => matchApi.resetAll(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["match-profiles"] });
+      setCurrentIndex(0);
+      sessionStorage.removeItem("match_current_index");
+      setNewUserCount(0);
+      toast({ 
+        title: "Fresh start! 🚀", 
+        description: "You'll see everyone again from the beginning." 
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Reset failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -349,19 +379,35 @@ export function HackathonMatch() {
         )}
 
         <div className="flex gap-4">
-          <Button
-            variant="outline"
-            className="flex-1 h-12"
-            onClick={() => resetRejectedMutation.mutate()}
-            disabled={resetRejectedMutation.isPending}
-          >
-            {resetRejectedMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            See profiles again
-          </Button>
+          {isPoolEmpty ? (
+            <Button
+              variant="default"
+              className="flex-1 h-12 bg-accent hover:bg-accent/90 text-white"
+              onClick={() => resetAllMutation.mutate()}
+              disabled={resetAllMutation.isPending}
+            >
+              {resetAllMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Start fresh
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="flex-1 h-12"
+              onClick={() => resetRejectedMutation.mutate()}
+              disabled={resetRejectedMutation.isPending}
+            >
+              {resetRejectedMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              See profiles again
+            </Button>
+          )}
 
           <Button
             variant="default"

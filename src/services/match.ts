@@ -59,4 +59,11 @@ export const matchApi = {
     });
     return response.data!;
   },
+  /** Reset ALL swipes for the current user */
+  resetAll: async (): Promise<{ reset: boolean }> => {
+    const response = await apiFetch<{ reset: boolean }>('/api/v1/match/reset-all', {
+      method: 'POST',
+    });
+    return response.data!;
+  },
 };

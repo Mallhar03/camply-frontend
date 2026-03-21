@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
 
 /**
  * Connects to the backend Socket.IO server and listens for real-time
@@ -23,11 +24,14 @@ export function useSocketNotifications() {
   useEffect(() => {
     if (!user || !accessToken) return;
 
-    const socket = io('/', {
+    const socketUrl = API_BASE_URL || window.location.origin;
+    const socket = io(socketUrl, {
       path: '/socket.io',
       auth: { token: accessToken },
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
+      transports: ['websocket', 'polling'], // Prioritize websocket for production (Railway)
+      withCredentials: true,
     });
 
     socketRef.current = socket;
@@ -63,6 +67,24 @@ export function useSocketNotifications() {
         title: `Team invite 🏆`,
         description: `You've been invited to join "${teamName}"!`,
         duration: 8000,
+      });
+    });
+
+    socket.on('pro:activated', () => {
+      toast({
+        title: "Camply Pro Activated! ⚡",
+        description: "Welcome to the elite tier. All premium features are now available.",
+        variant: "default",
+      });
+      // Force refresh pro status
+      window.dispatchEvent(new CustomEvent('pro-status-update'));
+    });
+
+    socket.on('mention', ({ senderName, content, postId }: { senderName: string; content: string; postId: string }) => {
+      toast({
+        title: `@${senderName} mentioned you`,
+        description: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+        duration: 5000,
       });
     });
 

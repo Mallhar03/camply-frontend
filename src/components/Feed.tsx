@@ -10,6 +10,7 @@ import { generateWebSiteSchema } from "@/utils/seo";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getFeed } from "@/services/feed";
 import { formatTimeAgo } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Feed() {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -17,6 +18,7 @@ export function Feed() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
 
   const {
     data,
@@ -101,15 +103,17 @@ export function Feed() {
         {/* Header */}
         <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur p-4 border-b md:border-none z-10">
           <h1 className="text-xl font-bold text-foreground md:hidden">Camply</h1>
-          <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setShowCreatePost(true)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-2 ml-auto mr-12 md:mr-0">
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => setShowCreatePost(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 
