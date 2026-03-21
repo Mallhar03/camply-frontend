@@ -4,24 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { MessageCircle, Users, Send, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { MessageCircle, Users, Send, ArrowLeft, Loader2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCommunityRooms, joinRoom, CommunityRoom } from "@/services/chat";
 import { useCommunityChat } from "@/hooks/useCommunityChat";
 import { formatDistanceToNow } from "date-fns";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useProStatus } from "@/hooks/useProStatus";
+import { CreateRoomDialog } from "./CreateRoomDialog";
+import { motion, AnimatePresence } from "framer-motion";
 
-// Consistent colour palette for the 4 community rooms (order-based, not ID-based)
-const ROOM_COLORS = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-orange-500"];
+const ROOM_COLORS = ["bg-blue-500", "bg-purple-500", "bg-green-500", "bg-orange-500", "bg-pink-500", "bg-indigo-500"];
 
-const FALLBACK_ROOMS: CommunityRoom[] = [
-  { id: "10000000-0000-0000-0000-000000000001", name: "RNSIT", topic: "RNS Institute of Technology community", _count: { members: 1240, messages: 0 }, messages: [] },
-  { id: "10000000-0000-0000-0000-000000000002", name: "Luminous", topic: "Creative and Design enthusiasts", _count: { members: 856, messages: 0 }, messages: [] },
-  { id: "10000000-0000-0000-0000-000000000003", name: "Startup Founders", topic: "Entrepreneurship and startup discussions", _count: { members: 623, messages: 0 }, messages: [] },
-  { id: "10000000-0000-0000-0000-000000000004", name: "Project Ideas", topic: "Brainstorm and collaborate on projects", _count: { members: 945, messages: 0 }, messages: [] },
-];
-
-// ─── Skeleton loader for room cards ──────────────────────────────────────────
 function RoomCardSkeleton() {
   return (
     <Card className="p-4 animate-pulse">
@@ -40,29 +34,26 @@ function RoomCardSkeleton() {
   );
 }
 
-// ─── VIEW A — Room List ───────────────────────────────────────────────────────
 interface RoomListProps {
   onJoin: (room: CommunityRoom, colorIdx: number) => void;
   activeRoomId: string | null;
   isAuthenticated: boolean;
+  isPro: boolean;
 }
 
-function RoomList({ onJoin, activeRoomId, isAuthenticated }: RoomListProps & { isAuthenticated: boolean }) {
+function RoomList({ onJoin, activeRoomId, isAuthenticated, isPro }: RoomListProps) {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<CommunityRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const fetchRooms = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await getCommunityRooms();
-      if (data.length === 0) {
-        setRooms(FALLBACK_ROOMS);
-      } else {
-        setRooms(data);
-      }
+      setRooms(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load rooms");
     } finally {
@@ -82,82 +73,91 @@ function RoomList({ onJoin, activeRoomId, isAuthenticated }: RoomListProps & { i
     );
   }
 
-  if (error) {
-    return (
-      <Card className="p-8 text-center space-y-4">
-        <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-        <p className="text-muted-foreground">{error}</p>
-        <Button onClick={fetchRooms} variant="outline">Retry</Button>
-      </Card>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {rooms.map((room, idx) => {
-        const color = ROOM_COLORS[idx % ROOM_COLORS.length];
-        const isActive = room.id === activeRoomId;
-        return (
-          <Card
-            key={room.id}
-            className={`p-4 cursor-pointer transition-all duration-300 hover:shadow-medium border-2 ${
-              isActive ? "border-primary bg-primary/5" : "hover:border-primary/50"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center`}>
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{room.name}</h3>
-                <p className="text-sm text-muted-foreground">{room.topic}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{room._count.members} members</span>
-              </div>
-              <Button
-                size="sm"
-                variant={isActive ? "default" : "outline"}
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    navigate("/login");
-                    return;
-                  }
-                  joinRoom(room.id).catch(console.error); // fire-and-forget
-                  onJoin(room, idx);
-                }}
-              >
-                {isActive ? "Active" : "Join Chat"}
-              </Button>
-            </div>
-          </Card>
-        );
-      })}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-primary" />
+          Active Communities
+        </h2>
+        <Button 
+          size="sm" 
+          onClick={() => isPro ? setCreateOpen(true) : navigate('/explore?tab=events')} // events tab has paywall
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New Room
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AnimatePresence mode="popLayout">
+          {rooms.map((room, idx) => {
+            const color = ROOM_COLORS[idx % ROOM_COLORS.length];
+            const isActive = room.id === activeRoomId;
+            return (
+              <motion.div key={room.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Card
+                  className={`p-4 cursor-pointer transition-all duration-300 hover:shadow-lg border-2 ${
+                    isActive ? "border-primary bg-primary/5" : "hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center text-white`}>
+                      <Users className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">{room.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{room.topic}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{room._count.members} members</span>
+                    <Button
+                      size="sm"
+                      variant={isActive ? "default" : "outline"}
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          navigate("/login");
+                          return;
+                        }
+                        joinRoom(room.id).catch(console.error);
+                        onJoin(room, idx);
+                      }}
+                    >
+                      {isActive ? "Active" : "Join Chat"}
+                    </Button>
+                  </div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      <CreateRoomDialog 
+        open={createOpen} 
+        onOpenChange={setCreateOpen} 
+        onSuccess={(newRoom) => setRooms([newRoom, ...rooms])}
+      />
     </div>
   );
 }
 
-// ─── VIEW B — Chat Interface ──────────────────────────────────────────────────
-interface ChatViewProps {
-  room: CommunityRoom;
-  onBack: () => void;
-  roomColor: string;
-}
+import { useMentionAutocomplete } from "@/hooks/useMentionAutocomplete";
 
-function ChatView({ room, onBack, roomColor }: ChatViewProps) {
+function ChatView({ room, onBack, roomColor }: { room: CommunityRoom; onBack: () => void; roomColor: string }) {
   const { user, accessToken } = useAuth();
   const [inputValue, setInputValue] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const { messages, isLoading, isConnected, isSending, typingUsers, sendMessage, emitTyping, loadMore, hasMore } =
+  const { suggestions, handleInput, insertMention, isActive } = useMentionAutocomplete();
+
+  const { messages, isLoading, isConnected, isSending, typingUsers, sendMessage, deleteMessage, emitTyping, loadMore, hasMore } =
     useCommunityChat(room.id, accessToken, room._count.members);
 
-  // Filter own username from typing indicator
   const otherTypingUsers = typingUsers.filter((u) => u !== user?.username);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -170,122 +170,117 @@ function ChatView({ room, onBack, roomColor }: ChatViewProps) {
   };
 
   return (
-    <Card className="overflow-hidden">
-      {/* Header */}
-      <div className="border-b p-4">
+    <Card className="overflow-hidden border-none shadow-2xl">
+      <div className="border-b p-4 bg-card/50 backdrop-blur">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Community Chats</span>
             </Button>
-            <div className={`w-8 h-8 ${roomColor} rounded-lg flex items-center justify-center`}>
-              <Users className="h-4 w-4 text-white" />
+            <div className={`w-10 h-10 ${roomColor} rounded-xl flex items-center justify-center text-white shadow-lg`}>
+              <Users className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold">{room.name}</h3>
-              <p className="text-sm text-muted-foreground">{room._count.members} members</p>
+              <h3 className="font-bold">{room.name}</h3>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-yellow-500"}`} />
+                {room._count.members} members
+              </p>
             </div>
           </div>
-          {!isConnected && (
-            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium animate-pulse">
-              Reconnecting...
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex flex-col h-[480px]">
+      <div className="flex flex-col h-[550px] bg-muted/10">
         <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {/* Load older messages */}
+          <div className="space-y-6">
             {hasMore && (
-              <div className="flex justify-center">
-                <Button variant="ghost" size="sm" onClick={loadMore} className="text-muted-foreground">
-                  Load older messages
-                </Button>
-              </div>
+              <Button variant="ghost" size="sm" onClick={loadMore} className="w-full text-xs text-muted-foreground">
+                Load older messages
+              </Button>
             )}
 
             {isLoading && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            )}
-
-            {!isLoading && messages.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No messages yet. Be the first to say something!</p>
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
               </div>
             )}
 
             {messages.map((msg) => {
-              const initials = msg.sender.username
-                .split(/[^a-zA-Z]+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((w) => w[0].toUpperCase())
-                .join("");
-              const timeAgo = formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true });
+              const isOwn = msg.sender.id === user?.id;
+              const isCreator = room.creatorId === user?.id;
+              const canDelete = isOwn || isCreator;
 
               return (
-                <div key={msg.id} className="flex gap-3 group hover:bg-muted/20 p-2 rounded-lg transition-all duration-200">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                    {initials || "?"}
+                <div key={msg.id} className={`flex gap-3 group items-start ${isOwn ? "flex-row-reverse" : ""}`}>
+                  <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">
+                    {msg.sender.username[0].toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm">{msg.sender.username}</span>
-                      <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                  <div className={`flex flex-col max-w-[80%] ${isOwn ? "items-end" : ""}`}>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-xs font-semibold">{msg.sender.username}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(msg.createdAt))}</span>
                     </div>
-                    <p className="text-sm text-foreground break-words">{msg.content}</p>
+                    <div className={`relative px-4 py-2 rounded-2xl text-sm shadow-sm ${
+                      isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card rounded-tl-none border"
+                    }`}>
+                      {msg.content}
+                      {canDelete && (
+                        <button 
+                          onClick={() => deleteMessage(msg.id)}
+                          className={`absolute -top-2 ${isOwn ? "-left-6" : "-right-6"} p-1 bg-destructive/10 text-destructive rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/20`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
-
-            {/* Typing indicator */}
-            {otherTypingUsers.length > 0 && (
-              <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground animate-fade-in">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-                <span>{otherTypingUsers.join(", ")} {otherTypingUsers.length === 1 ? "is" : "are"} typing...</span>
-              </div>
-            )}
-
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
 
-        <Separator />
-
-        {/* Message Input */}
-        <div className="p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 bg-muted rounded-lg px-3 py-2 border-2 focus-within:border-primary transition-all duration-300">
-              <Input
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  emitTyping();
-                }}
-                placeholder={`Message ${room.name}...`}
-                className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-                disabled={!isConnected}
-              />
+        <div className="p-4 bg-card/50 border-t relative">
+          {isActive && (
+            <div className="absolute bottom-full left-4 right-4 bg-card border rounded-lg shadow-lg z-50 mb-2 overflow-hidden">
+              {suggestions.map((u) => (
+                <button
+                  key={u.id}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                  onClick={() => {
+                    setInputValue(insertMention(u, inputValue));
+                    handleInput('', 0);
+                  }}
+                >
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                    {u.username[0].toUpperCase()}
+                  </div>
+                  <span>@{u.username}</span>
+                </button>
+              ))}
             </div>
-            <Button
-              onClick={handleSend}
-              disabled={isSending || !isConnected || !inputValue.trim()}
-              className="bg-gradient-primary"
-            >
-              <Send className="h-4 w-4" />
+          )}
+          {otherTypingUsers.length > 0 && (
+            <div className="text-[10px] text-muted-foreground mb-2 italic px-2">
+              {otherTypingUsers.join(", ")} is typing...
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                emitTyping();
+                handleInput(e.target.value, e.target.selectionEnd);
+              }}
+              placeholder="Type a message..."
+              className="bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-11 px-4"
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            />
+            <Button onClick={handleSend} disabled={isSending || !inputValue.trim()} size="icon" className="h-11 w-11 rounded-full shadow-lg">
+              <Send className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -294,36 +289,25 @@ function ChatView({ room, onBack, roomColor }: ChatViewProps) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export function CommunityChats() {
   const { user } = useAuth();
+  const { data: pro } = useProStatus();
   const [activeRoom, setActiveRoom] = useState<CommunityRoom | null>(null);
   const [activeRoomColor, setActiveRoomColor] = useState<string>(ROOM_COLORS[0]);
 
-
-
   if (activeRoom) {
-    return (
-      <div className="space-y-6">
-        <ChatView
-          room={activeRoom}
-          onBack={() => setActiveRoom(null)}
-          roomColor={activeRoomColor}
-        />
-      </div>
-    );
+    return <ChatView room={activeRoom} onBack={() => setActiveRoom(null)} roomColor={activeRoomColor} />;
   }
 
   return (
-    <div className="space-y-6">
-      <RoomList
-        activeRoomId={activeRoom?.id ?? null}
-        isAuthenticated={!!user}
-        onJoin={(room, colorIdx) => {
-          setActiveRoom(room);
-          setActiveRoomColor(ROOM_COLORS[colorIdx % ROOM_COLORS.length]);
-        }}
-      />
-    </div>
+    <RoomList
+      activeRoomId={null}
+      isAuthenticated={!!user}
+      isPro={!!pro?.isPro}
+      onJoin={(room, colorIdx) => {
+        setActiveRoom(room);
+        setActiveRoomColor(ROOM_COLORS[colorIdx % ROOM_COLORS.length]);
+      }}
+    />
   );
 }

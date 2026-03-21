@@ -70,6 +70,24 @@ export function useSocketNotifications() {
       });
     });
 
+    socket.on('pro:activated', () => {
+      toast({
+        title: "Camply Pro Activated! ⚡",
+        description: "Welcome to the elite tier. All premium features are now available.",
+        variant: "default",
+      });
+      // Force refresh pro status
+      window.dispatchEvent(new CustomEvent('pro-status-update'));
+    });
+
+    socket.on('mention', ({ senderName, content, postId }: { senderName: string; content: string; postId: string }) => {
+      toast({
+        title: `@${senderName} mentioned you`,
+        description: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+        duration: 5000,
+      });
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;

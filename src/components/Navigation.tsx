@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavigationProps {
   onTabChange: (tab: string) => void;
@@ -80,8 +81,9 @@ export function Navigation({ onTabChange }: NavigationProps) {
         </div>
       </nav>
 
-      {/* Mobile Top Mode Toggle */}
-      <div className="fixed top-4 right-4 z-50 md:hidden">
+      {/* Mobile Top Controls */}
+      <div className="fixed top-4 right-4 z-50 md:hidden flex items-center gap-2">
+        {isAuthenticated && <NotificationBell />}
         <ModeToggle />
       </div>
 
@@ -95,7 +97,10 @@ export function Navigation({ onTabChange }: NavigationProps) {
               </div>
               <h1 className="text-xl font-bold text-foreground">Camply</h1>
             </div>
-            <ModeToggle />
+            <div className="flex items-center gap-2">
+              {isAuthenticated && <NotificationBell />}
+              <ModeToggle />
+            </div>
           </div>
 
           <div className="space-y-2">
