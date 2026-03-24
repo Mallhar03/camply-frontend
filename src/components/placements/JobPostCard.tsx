@@ -87,7 +87,7 @@ export function JobPostCard({ job }: JobPostCardProps) {
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <span className="text-lg font-bold text-accent">{initials}</span>
+              <span className="text-lg font-bold text-accent dark:text-white">{initials}</span>
             )}
           </div>
           <div className="flex-1 pr-24">
@@ -95,7 +95,7 @@ export function JobPostCard({ job }: JobPostCardProps) {
               {job.role}
             </h3>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <span className="font-semibold text-accent">{job.companyName}</span>
+              <span className="font-semibold text-accent dark:text-white">{job.companyName}</span>
               <span>•</span>
               <div className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
@@ -107,20 +107,20 @@ export function JobPostCard({ job }: JobPostCardProps) {
 
         {/* Quick Info */}
         <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-1.5 text-xs bg-accent/5 px-2 py-1 rounded">
-            <DollarSign className="h-3 w-3 text-accent" />
-            <span className="text-foreground/80 font-medium">{job.compensationType}</span>
+          <div className="flex items-center gap-1.5 text-xs bg-accent/5 dark:bg-white/10 px-2 py-1 rounded">
+            <DollarSign className="h-3 w-3 text-accent dark:text-white" />
+            <span className="text-foreground/80 font-medium dark:text-white">{job.compensationType}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs bg-accent/5 px-2 py-1 rounded">
-            <Briefcase className="h-3 w-3 text-accent" />
-            <span className="text-foreground/80 font-medium">{job.source === 'CAMPLY_INTERNAL' ? 'Internal' : 'Partner'}</span>
+          <div className="flex items-center gap-1.5 text-xs bg-accent/5 dark:bg-white/10 px-2 py-1 rounded">
+            <Briefcase className="h-3 w-3 text-accent dark:text-white" />
+            <span className="text-foreground/80 font-medium dark:text-white">{job.source === 'CAMPLY_INTERNAL' ? 'Internal' : 'Partner'}</span>
           </div>
         </div>
 
         {/* View Details Toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline decoration-accent/50"
+          className="flex items-center gap-1 text-xs font-semibold text-accent dark:text-white hover:underline decoration-accent/50"
         >
           {isExpanded ? (
             <>
@@ -150,13 +150,13 @@ export function JobPostCard({ job }: JobPostCardProps) {
           {/* Perks */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-accent" />
+              <Sparkles className="h-4 w-4 text-accent dark:text-orange-400" />
               Perks & Benefits
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {job.perks.map((perk, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-accent mt-0.5">✦</span>
+                  <span className="text-accent dark:text-orange-400 mt-0.5">✦</span>
                   <span>{perk}</span>
                 </div>
               ))}
@@ -166,13 +166,13 @@ export function JobPostCard({ job }: JobPostCardProps) {
           {/* Requirements */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-accent" />
+              <CheckCircle2 className="h-4 w-4 text-accent dark:text-orange-400" />
               Requirements
             </h4>
             <ul className="space-y-2">
               {job.requirements.map((req, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-accent mt-0.5">→</span>
+                  <span className="text-accent dark:text-orange-400 mt-0.5">→</span>
                   <span>{req}</span>
                 </li>
               ))}
@@ -180,8 +180,8 @@ export function JobPostCard({ job }: JobPostCardProps) {
           </div>
 
           {/* Compensation Note */}
-          <div className="p-3 bg-accent/5 rounded-lg border border-accent/10">
-            <h4 className="text-[10px] uppercase tracking-wider font-bold text-accent mb-1">
+          <div className="p-3 bg-accent/5 dark:bg-white/5 rounded-lg border border-accent/10 dark:border-white/10">
+            <h4 className="text-[10px] uppercase tracking-wider font-bold text-accent dark:text-orange-400 mb-1">
               Compensation Details
             </h4>
             <p className="text-xs text-muted-foreground">{job.compensationNote}</p>

@@ -114,7 +114,7 @@ export function PlacementExperienceCard({ post }: PlacementExperienceCardProps) 
         {/* Header: Company & Meta */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-accent/10 border flex items-center justify-center">
+            <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-accent/10 dark:bg-white/10 border flex items-center justify-center">
               {post.companyLogo && !logoError ? (
                 <img
                   src={post.companyLogo}
@@ -123,7 +123,7 @@ export function PlacementExperienceCard({ post }: PlacementExperienceCardProps) 
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <span className="text-sm font-bold text-accent">{initials}</span>
+                <span className="text-sm font-bold text-accent dark:text-white">{initials}</span>
               )}
             </div>
             <div>
@@ -146,7 +146,7 @@ export function PlacementExperienceCard({ post }: PlacementExperienceCardProps) 
         {/* Content: Package, Location, College */}
         <div className="grid grid-cols-2 gap-y-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="text-accent font-semibold">{post.package}</span>
+            <span className="text-accent dark:text-white font-semibold">{post.package}</span>
             <span>package</span>
           </div>
           <div className="flex items-center gap-1.5 justify-end">
@@ -163,14 +163,14 @@ export function PlacementExperienceCard({ post }: PlacementExperienceCardProps) 
         </div>
 
         {/* Preview text */}
-        <p className="text-sm text-foreground/80 line-clamp-2 italic border-l-2 pl-3 py-1 bg-accent/5">
+        <p className="text-sm text-foreground/80 line-clamp-2 italic border-l-2 pl-3 py-1 bg-accent/5 dark:bg-white/5">
           "{post.preview}"
         </p>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-1.5">
           {post.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-accent/10 text-accent border-none">
+            <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-accent/10 dark:bg-white/10 text-accent dark:text-white border-none">
               #{tag}
             </Badge>
           ))}
@@ -182,10 +182,10 @@ export function PlacementExperienceCard({ post }: PlacementExperienceCardProps) 
             <button
               onClick={handleUpvote}
               className={`flex items-center gap-1.5 text-sm transition-colors ${
-                hasUpvoted ? "text-accent font-bold" : "text-muted-foreground hover:text-accent"
+                hasUpvoted ? "text-accent dark:text-orange-400 font-bold" : "text-muted-foreground hover:text-accent dark:hover:text-orange-400"
               }`}
             >
-              <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? "fill-accent" : ""}`} />
+              <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? "fill-accent dark:fill-orange-400" : ""}`} />
               <span>{upvoteCount}</span>
             </button>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">

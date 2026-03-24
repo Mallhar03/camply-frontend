@@ -34,7 +34,7 @@ export function PartnerTestCard({ test }: PartnerTestCardProps) {
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex gap-4">
         {/* Logo */}
-        <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-accent/10 border flex items-center justify-center">
+        <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-accent/10 dark:bg-white/10 border flex items-center justify-center">
           {test.logoUrl && !logoError ? (
             <img
               src={test.logoUrl}
@@ -43,14 +43,14 @@ export function PartnerTestCard({ test }: PartnerTestCardProps) {
               onError={() => setLogoError(true)}
             />
           ) : (
-            <span className="text-lg font-bold text-accent">{initials}</span>
+            <span className="text-lg font-bold text-accent dark:text-white">{initials}</span>
           )}
         </div>
 
         {/* Info */}
         <div className="flex-1 space-y-2">
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-accent uppercase tracking-wider">
+            <span className="text-xs font-bold text-accent dark:text-white uppercase tracking-wider">
               {test.platformName}
             </span>
             <h3 className="text-base font-bold text-foreground">{test.title}</h3>
