@@ -32,8 +32,8 @@ export function JobPostCard({ job }: JobPostCardProps) {
       job.applySubject
     )}&body=${encodeURIComponent(
       "Hi Camply Team,\n\nI am interested in the " +
-        job.role +
-        " role.\n\nPlease find my resume attached.\n\nRegards,"
+      job.role +
+      " role.\n\nPlease find my resume/skills attached.\n(If you don't have a resume ready, you can delete the line above and list your skills or project below!) \n\n My Skills & Projects: \n\n Looking forward to hearing from you! \n\n \n\n Regards \n\n [name], \n\n [mobile number]"
     )}`;
     window.open(mailtoHref, "_blank");
   };
@@ -64,9 +64,8 @@ export function JobPostCard({ job }: JobPostCardProps) {
 
   return (
     <Card
-      className={`relative overflow-hidden transition-all duration-300 ${
-        job.source === "CAMPLY_INTERNAL" ? "border-l-4 border-l-primary" : ""
-      }`}
+      className={`relative overflow-hidden transition-all duration-300 ${job.source === "CAMPLY_INTERNAL" ? "border-l-4 border-l-primary" : ""
+        }`}
     >
       {/* Hiring Badge for Camply Internal */}
       {job.source === "CAMPLY_INTERNAL" && (
@@ -135,9 +134,8 @@ export function JobPostCard({ job }: JobPostCardProps) {
 
         {/* Expanded Content */}
         <div
-          className={`space-y-6 transition-all duration-300 overflow-hidden ${
-            isExpanded ? "max-h-[2000px] opacity-100 pt-2" : "max-h-0 opacity-0"
-          }`}
+          className={`space-y-6 transition-all duration-300 overflow-hidden ${isExpanded ? "max-h-[2000px] opacity-100 pt-2" : "max-h-0 opacity-0"
+            }`}
         >
           {/* Description */}
           <div className="space-y-2">
